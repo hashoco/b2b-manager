@@ -1,0 +1,17 @@
+# Node.js (Frontend)
+b2b-frontend/node_modules/
+b2b-frontend/build/
+b2b-frontend/.env
+b2b-frontend/.next/
+
+# Java (Backend)
+b2b-manager/target/
+b2b-manager/*.class
+b2b-manager/.gradle/
+b2b-manager/build/
+
+# IDE & OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
