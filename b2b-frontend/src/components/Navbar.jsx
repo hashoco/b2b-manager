@@ -18,8 +18,8 @@ const Navbar = () => {
   const menuItems = [
     { path: '/dashboard', icon: '📊', label: '대시보드' },
     { path: '/clients', icon: '🏢', label: '거래처 관리' },
-    { path: '/orders', icon: '🚚', label: '수거/배달 현황' },
-    { path: '/invoices', icon: '🧾', label: '월별 정산' },
+    { path: '/dailyWork', icon: '🚚', label: '매출 현황' },
+    { path: '/attendance', icon: '🧾', label: '근태 관리' },
   ];
 
   return (

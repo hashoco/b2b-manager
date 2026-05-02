@@ -11,7 +11,7 @@ public class ClientCompany {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔵 신규 추가: 어느 세탁소(법인)의 거래처인가?
+    
     @Column(nullable = false)
     private String companyCode;
 

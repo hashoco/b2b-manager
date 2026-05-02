@@ -4,7 +4,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Navbar from './components/Navbar';
 import Clients from './pages/Clients'; 
-
+import DailyWork from './pages/DailyWork';
+import Attendance from './pages/Attendance';
 
 const MainLayout = () => {
   return (
@@ -28,8 +29,10 @@ function App() {
         
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/clients" element={<Clients />} /> {/* <-- 주석 해제! */}
-          {/* <Route path="/orders" element={<Orders />} /> */}
+          <Route path="/clients" element={<Clients />} /> 
+          <Route path="/dailyWork" element={<DailyWork />} />
+          <Route path="/attendance" element={<Attendance />} />
+          
         </Route>
       </Routes>
     </BrowserRouter>

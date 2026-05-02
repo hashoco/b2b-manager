@@ -6,12 +6,13 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 const handleLogin = async (e) => {
     e.preventDefault();
     
     try {
       // 1. 백엔드(8080)로 로그인 요청
-      const response = await fetch('http://localhost:8080/api/login', {
+      const response = await fetch(`${API_BASE_URL}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
