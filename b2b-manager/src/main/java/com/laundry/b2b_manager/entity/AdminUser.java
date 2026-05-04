@@ -2,7 +2,6 @@ package com.laundry.b2b_manager.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
 @Entity
 @Table(name = "admin_user")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -11,7 +10,12 @@ public class AdminUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    // 로그인 ID로 사용 (기존 username에서 변경)
+    @Column(name = "user_id", unique = true, nullable = false)
+    private String userId;
+
+    // 사용자 이름 또는 닉네임 (새로 추가)
+    @Column(nullable = false)
     private String username;
 
     @Column(nullable = false)
@@ -20,7 +24,6 @@ public class AdminUser {
     @Column(nullable = false)
     private String role;
     
-    // 🔵 신규 추가: 어느 세탁소(법인) 소속인지 구분하는 코드 (예: C001, C002)
     @Column(name = "company_code", nullable = false)
     private String companyCode; 
 }

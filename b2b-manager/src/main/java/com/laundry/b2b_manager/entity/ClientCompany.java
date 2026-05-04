@@ -4,21 +4,29 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "client_company")
+// 💡 아래처럼 @Table 설정을 변경하여 두 컬럼을 묶어서 유니크 처리합니다.
+@Table(
+    name = "client_company",
+    uniqueConstraints = {
+        @UniqueConstraint(
+            name = "uk_company_partner_code",
+            columnNames = {"company_code", "partner_code"} // 두 개가 합쳐져서 유일해야 함
+        )
+    }
+)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ClientCompany {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    
-    @Column(nullable = false)
+    @Column(name = "company_code", nullable = false)
     private String companyCode;
 
-    @Column(nullable = false)
+    @Column(name = "partner_code", nullable = false)
     private String partnerCode; 
     
-    @Column(nullable = false)
+    @Column(name = "partner_name", nullable = false)
     private String partnerName;
     
     private String bizRegNo;

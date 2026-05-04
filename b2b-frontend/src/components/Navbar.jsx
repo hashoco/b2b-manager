@@ -19,7 +19,9 @@ const Navbar = () => {
     { path: '/dashboard', icon: '📊', label: '대시보드' },
     { path: '/clients', icon: '🏢', label: '거래처 관리' },
     { path: '/dailyWork', icon: '🚚', label: '매출 현황' },
-    { path: '/attendance', icon: '🧾', label: '근태 관리' },
+    { path: '/attendance', icon: '📅', label: '근태 관리' },
+    { path: '/taxInvoice', icon: '📑', label: '세금계산서 엑셀' },
+    
   ];
 
   return (
@@ -33,7 +35,7 @@ const Navbar = () => {
       {/* 로고 영역 */}
       <div className="h-20 flex items-center justify-center border-b border-slate-800">
         <span className="text-2xl font-extrabold text-white tracking-wider whitespace-nowrap overflow-hidden">
-          {isHovered ? 'B2B MANAGER' : '👔'}
+          {isHovered ? 'B2B MANAGER' : '⚙️'}
         </span>
       </div>
 

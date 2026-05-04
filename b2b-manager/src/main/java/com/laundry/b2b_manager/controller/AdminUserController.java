@@ -19,11 +19,12 @@ public class AdminUserController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> loginData) {
-        String username = loginData.get("username");
+        String userid = loginData.get("userId");
         String password = loginData.get("password");
+        
 
         // 1. 서비스에 로그인 인증 요청
-        AdminUser user = adminUserService.authenticate(username, password);
+        AdminUser user = adminUserService.authenticate(userid, password);
 
         // 2. 인증 결과에 따른 응답 처리
         if (user != null) {
@@ -33,6 +34,7 @@ public class AdminUserController {
             response.put("message", "로그인 성공!");
             response.put("companyCode", user.getCompanyCode());
             response.put("username", user.getUsername());
+            response.put("userid", user.getUserId());
             
             return ResponseEntity.ok(response); 
         } else {

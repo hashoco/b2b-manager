@@ -24,7 +24,7 @@ export default function Clients() {
   // 검색 및 필터
   const [searchName, setSearchName] = useState("");
   const [vatFilter, setVatFilter] = useState("ALL");
-  const API_BASE_URL = process.env.REACT_APP_API_URL || "";
+  
 
   // 데이터 로드
   const loadPartners = async () => {
@@ -32,7 +32,7 @@ export default function Clients() {
     
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/partners/list?companyCode=${companyCode}`);
+      const res = await fetch(`/api/partners/list?companyCode=${companyCode}`);
       const data = await res.json();
       
       if (data.success && data.partners) {
@@ -116,7 +116,7 @@ export default function Clients() {
     };
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/partners/save`, {
+      const res = await fetch(`/api/partners/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -264,8 +264,8 @@ export default function Clients() {
                   <div>
                     <label className={labelStyle}>매장 구분</label>
                     <select value={storeType} onChange={(e) => setStoreType(e.target.value)} className={inputStyle}>
-                      <option value="BAG">일반 (마대)</option>
-                      <option value="MONTH">고정 (월별)</option>
+                      <option value="BAG">마대</option>
+                      <option value="MONTH">월별</option>
                     </select>
                   </div>
                   <div>
