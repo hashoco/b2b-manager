@@ -1,64 +1,118 @@
 package com.laundry.b2b_manager.service;
 
-import com.laundry.b2b_manager.entity.Attendance;
-import com.laundry.b2b_manager.repository.AttendanceRepository;
+import com.laundry.b2b_manager.entity.*;
+import com.laundry.b2b_manager.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class AttendanceService {
 
-    private final AttendanceRepository attendanceRepository;
+    private final EmployeeRepository employeeRepository;
+    private final MonthlySalaryRepository monthlySalaryRepository;
+    private final AttendanceRecordRepository attendanceRecordRepository;
 
-    public List<Attendance> getAttendanceList(String companyCode, String month) {
-        return attendanceRepository.findByCompanyCodeAndWorkDateStartingWithOrderByWorkDateAsc(companyCode, month);
+    /**
+     * 1. 마스터 그리드 조회 (직원정보 + 해당월 급여합계)
+     */
+    public List<Map<String, Object>> getMasterList(String companyCode, String month) {
+        List<Employee> employees = employeeRepository.findByCompanyCode(companyCode);
+        List<Map<String, Object>> resultList = new ArrayList<>();
+
+        for (Employee emp : employees) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", emp.getId());
+            map.put("name", emp.getName());
+            map.put("insurance", emp.getInsurance());
+            map.put("phone", emp.getPhone());
+            map.put("wage", emp.getWage());
+            map.put("note", emp.getNote());
+            map.put("useYn", emp.getUseYn());
+
+            // 해당 월의 정산 기록(스냅샷)이 있는지 확인
+            Optional<MonthlySalary> ms = monthlySalaryRepository.findByCompanyCodeAndEmployeeIdAndWorkMonth(companyCode, emp.getId(), month);
+            if (ms.isPresent()) {
+                map.put("totalHours", ms.get().getTotalHours());
+                map.put("totalSalary", ms.get().getTotalSalary());
+            } else {
+                map.put("totalHours", 0);
+                map.put("totalSalary", 0);
+            }
+            resultList.add(map);
+        }
+        return resultList;
     }
 
-    // 🚀 수정된 저장 로직: 완벽한 기존 데이터 삭제 후 신규 Insert 보장
+    /**
+     * 2. 상세 근태 조회 (적용 시급 로직 포함)
+     */
+    public Map<String, Object> readAttendance(String companyCode, Long employeeId, String month) {
+        Map<String, Object> result = new HashMap<>();
+
+        // 과거 스냅샷 시급이 있으면 가져오고, 없으면 현재 직원의 기본 시급 사용
+        Optional<MonthlySalary> ms = monthlySalaryRepository.findByCompanyCodeAndEmployeeIdAndWorkMonth(companyCode, employeeId, month);
+        if (ms.isPresent()) {
+            result.put("appliedWage", ms.get().getAppliedWage());
+        } else {
+            Employee emp = employeeRepository.findById(employeeId).orElse(null);
+            result.put("appliedWage", emp != null ? emp.getWage() : 0);
+        }
+
+        List<AttendanceRecord> rows = attendanceRecordRepository.findByCompanyCodeAndEmployeeIdAndWorkDateStartingWith(companyCode, employeeId, month);
+        result.put("rows", rows);
+        return result;
+    }
+
+    /**
+     * 3. 상세 근태 및 월별 스냅샷 일괄 저장
+     */
     @Transactional
-    public void saveAttendanceList(String companyCode, String month, List<Map<String, Object>> rowsData) {
-        
-        // 1. 해당 월의 기존 데이터를 조건 없이 전부 삭제합니다.
-        attendanceRepository.deleteByCompanyCodeAndWorkDateStartingWith(companyCode, month);
+    public void saveAttendance(Map<String, Object> payload) {
+        String companyCode = (String) payload.get("companyCode");
+        Long employeeId = Long.valueOf(payload.get("employeeId").toString());
+        String month = (String) payload.get("month");
+        Integer appliedWage = (Integer) payload.get("appliedWage");
+        List<Map<String, Object>> rowsMap = (List<Map<String, Object>>) payload.get("rows");
 
-        // 2. 삭제 후 1차 캐시를 비워주어 영속성 컨텍스트를 깔끔하게 만듭니다. (JPA 버그 방지)
-        attendanceRepository.flush();
+        int totalMin = 0;
+        List<AttendanceRecord> recordsToSave = new ArrayList<>();
 
-        // 3. 새로운 데이터를 세팅합니다.
-        List<Attendance> entities = rowsData.stream().map(data -> {
-            Attendance a = new Attendance();
-            // id 필드는 세팅하지 않습니다. (자동 증가되어 완벽하게 신규 Insert로 동작함)
-            
-            a.setCompanyCode(companyCode);
-            
-            // 🔥 핵심: 리액트에서 date로 보내든 workDate로 보내든 모두 잡아냅니다.
-            String targetDate = data.containsKey("date") ? 
-                                (String) data.get("date") : 
-                                (String) data.get("workDate");
-            
-            // 만약 날짜가 비어있다면 무시 (데이터 증발 방지)
-            if (targetDate == null || targetDate.trim().isEmpty()) {
-                return null;
-            }
-            a.setWorkDate(targetDate);
-            a.setInTime((String) data.get("inTime"));
-            a.setOutTime((String) data.get("outTime"));
-            a.setWorkCalc((String) data.get("workCalc"));
-            
-            // null 방어 로직 추가
-            a.setHours(data.get("hours") != null ? Integer.parseInt(String.valueOf(data.get("hours"))) : 0);
-            a.setMinutes(data.get("minutes") != null ? Integer.parseInt(String.valueOf(data.get("minutes"))) : 0);
-            
-            return a;
-        }).filter(a -> a != null).collect(Collectors.toList());
+        for (Map<String, Object> row : rowsMap) {
+            AttendanceRecord record = new AttendanceRecord();
+            record.setCompanyCode(companyCode);
+            record.setEmployeeId(employeeId);
+            record.setWorkDate((String) row.get("workDate"));
+            record.setInTime((String) row.get("inTime"));
+            record.setOutTime((String) row.get("outTime"));
+            record.setHours((Integer) row.get("hours"));
+            record.setMinutes((Integer) row.get("minutes"));
+            record.setWorkCalc((String) row.get("workCalc"));
 
-        // 4. 일괄 Insert 실행
-        attendanceRepository.saveAll(entities);
+            totalMin += (record.getHours() != null ? record.getHours() : 0) * 60;
+            totalMin += (record.getMinutes() != null ? record.getMinutes() : 0);
+            recordsToSave.add(record);
+        }
+
+        // 1. 월별 급여 요약(스냅샷) 업데이트/생성
+        int totalHours = totalMin / 60;
+        int totalSalary = (int) Math.floor((totalMin / 60.0) * appliedWage);
+
+        MonthlySalary ms = monthlySalaryRepository.findByCompanyCodeAndEmployeeIdAndWorkMonth(companyCode, employeeId, month)
+                .orElse(new MonthlySalary());
+        ms.setCompanyCode(companyCode);
+        ms.setEmployeeId(employeeId);
+        ms.setWorkMonth(month);
+        ms.setAppliedWage(appliedWage);
+        ms.setTotalHours(totalHours);
+        ms.setTotalSalary(totalSalary);
+        monthlySalaryRepository.save(ms);
+
+        // 2. 기존 일별 데이터 삭제 후 재삽입
+        attendanceRecordRepository.deleteByCompanyCodeAndEmployeeIdAndWorkDateStartingWith(companyCode, employeeId, month);
+        attendanceRecordRepository.saveAll(recordsToSave);
     }
 }

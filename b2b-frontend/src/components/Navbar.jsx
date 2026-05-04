@@ -25,13 +25,14 @@ const Navbar = () => {
   ];
 
   return (
-    <nav 
-      className={`fixed top-0 left-0 h-screen bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out z-50 flex flex-col
-        ${isHovered ? 'w-64' : 'w-20'}
-      `}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+<nav 
+  className={`fixed top-0 left-0 h-screen bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out flex flex-col
+    ${isHovered ? 'w-64' : 'w-20'}
+  `}
+  style={{ zIndex: 9999 }} // 🚀 핵심: Tailwind를 무시하고 브라우저에 직접 최상단 고정 명령
+  onMouseEnter={() => setIsHovered(true)}
+  onMouseLeave={() => setIsHovered(false)}
+>
       {/* 로고 영역 */}
       <div className="h-20 flex items-center justify-center border-b border-slate-800">
         <span className="text-2xl font-extrabold text-white tracking-wider whitespace-nowrap overflow-hidden">

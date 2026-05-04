@@ -1,53 +1,50 @@
 package com.laundry.b2b_manager.controller;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import com.laundry.b2b_manager.entity.Employee;
+import com.laundry.b2b_manager.repository.EmployeeRepository;
+import com.laundry.b2b_manager.service.AttendanceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.laundry.b2b_manager.service.AttendanceService;
 @RestController
-@RequestMapping("/api/attendance")
 @RequiredArgsConstructor
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
+    private final EmployeeRepository employeeRepository; // 단순 저장은 레포지토리 직접 사용
 
-    @PostMapping("/read")
-    public ResponseEntity<?> readAttendance(@RequestBody Map<String, String> params) {
-        String companyCode = params.get("companyCode");
-        String month = params.get("month");
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        
-        response.put("rows", attendanceService.getAttendanceList(companyCode, month)); 
-        
-        return ResponseEntity.ok(response);
+    // 1. 마스터 리스트 조회
+    @GetMapping("/api/attendance/master-list")
+    public Map<String, Object> getMasterList(@RequestParam String companyCode, @RequestParam String month) {
+        List<Map<String, Object>> rows = attendanceService.getMasterList(companyCode, month);
+        return Map.of("success", true, "rows", rows);
     }
 
-    @PostMapping("/save")
-    public ResponseEntity<?> saveAttendance(@RequestBody Map<String, Object> payload) {
-        try {
-            String companyCode = (String) payload.get("companyCode");
-            String month = (String) payload.get("month");
-            List<Map<String, Object>> rows = (List<Map<String, Object>>) payload.get("rows");
+    // 2. 직원 관리 (추가/수정)
+    @PostMapping("/api/employees/save")
+    public Map<String, Object> saveEmployee(@RequestBody Employee emp) {
+        employeeRepository.save(emp);
+        return Map.of("success", true);
+    }
 
-            // 여기서 saveAttendanceList 호출!
-            attendanceService.saveAttendanceList(companyCode, month, rows); 
+    // 3. 근태 내역 읽기
+    @PostMapping("/api/attendance/read")
+    public Map<String, Object> readAttendance(@RequestBody Map<String, Object> payload) {
+        String companyCode = (String) payload.get("companyCode");
+        Long employeeId = Long.valueOf(payload.get("employeeId").toString());
+        String month = (String) payload.get("month");
+        
+        Map<String, Object> data = attendanceService.readAttendance(companyCode, employeeId, month);
+        return Map.of("success", true, "appliedWage", data.get("appliedWage"), "rows", data.get("rows"));
+    }
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", e.getMessage());
-            return ResponseEntity.internalServerError().body(response);
-        }
+    // 4. 근태 및 급여 스냅샷 저장
+    @PostMapping("/api/attendance/save")
+    public Map<String, Object> saveAttendance(@RequestBody Map<String, Object> payload) {
+        attendanceService.saveAttendance(payload);
+        return Map.of("success", true);
     }
 }
