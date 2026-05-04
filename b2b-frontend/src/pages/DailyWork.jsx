@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 const DailyWork = () => {
   const [partners, setPartners] = useState([]);
@@ -99,6 +99,20 @@ const DailyWork = () => {
     }
   };
 
+  const grandTotal = useMemo(() => cells.reduce((sum, c) => sum + (c.qty || 0), 0), [cells]);
+
+  const getPartnerAmount = (p) => {
+    const storeType = (p.storeType || p.store_type || "").trim().toUpperCase();
+    const expectedAmount = p.expectedAmount || p.expected_amount || 0;
+
+    if (storeType === "MONTH" || storeType === "월별") {
+      return expectedAmount; 
+    } else {
+      const sumQty = cells.filter(c => c.partnerId === p.id).reduce((acc, cur) => acc + (cur.qty || 0), 0);
+      return sumQty * expectedAmount; 
+    }
+  };
+
   const getCategoryInlineStyle = (p) => {
     const storeType = (p.storeType || p.store_type || "").trim().toUpperCase();
     const vatYn = (p.vatYn || p.vat_yn || "Y").trim().toUpperCase();
@@ -116,26 +130,14 @@ const DailyWork = () => {
       baseStyle = { backgroundColor: '#f1f5f9', color: '#1e293b', borderColor: '#e2e8f0' };
     }
     
-    // 넓이 100px 강제 고정
-    return { 
-      ...baseStyle, 
-      zIndex: 40,
-      width: '100px', 
-      minWidth: '100px', 
-      maxWidth: '100px' 
-    };
+    return baseStyle;
   };
 
   return (
-    // 전체 뷰포트를 채우는 배경 래퍼
     <div className="w-full h-screen bg-slate-50 py-6 px-4 flex flex-col items-center">
-      
-      {/* 🚀 핵심 1: CSS Grid 적용.
-          grid-rows-[auto_1fr] -> 첫 번째 행(상단 컨트롤)은 내용물 높이만큼, 두 번째 행(하단 카드)은 남은 영역 전부를 강제 할당.
-          min-h-0 min-w-0 -> 내부 요소가 팽창하려고 할 때 Grid 사이즈를 뚫지 못하게 하는 강력한 방어선. */}
       <div className="w-full h-full max-w-full lg:max-w-[95%] grid grid-rows-[auto_1fr] gap-4 min-h-0 min-w-0">
         
-        {/* 상단 컨트롤 영역 (밀림 현상 원천 차단) */}
+        {/* 상단 컨트롤 영역 */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 w-full min-w-0">
           <div className="flex flex-col sm:flex-row items-center gap-8 border-slate-100 pr-2">
             <div>
@@ -143,6 +145,17 @@ const DailyWork = () => {
               <p className="text-xs text-slate-400 mt-1 font-bold uppercase tracking-wider">
                 {loading ? "데이터 불러오는 중..." : "일별 상세 배송 관리"}
               </p>
+            </div>
+            
+            <div className="hidden sm:block w-px h-10 bg-slate-200"></div>
+            <div className="flex flex-col items-center sm:items-start">
+              <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-0.5">월별 총집계</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-black text-slate-900 tracking-tighter">
+                  {grandTotal > 0 ? grandTotal.toLocaleString() : "0"}
+                </span>
+                <span className="text-lg font-black text-slate-900 tracking-tighter ml-1">건</span>
+              </div>
             </div>
           </div>
           
@@ -162,11 +175,10 @@ const DailyWork = () => {
           </div>
         </div>
 
-        {/* 🚀 핵심 2: 하단 테이블 카드 (이 안에서도 Grid 적용) 
-            내부 상단 범례(auto)와 하단 스크롤 테이블(1fr) 영역으로 나눔 */}
+        {/* 하단 메인 테이블 컨테이너 */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm w-full grid grid-rows-[auto_1fr] overflow-hidden min-h-0 min-w-0">
           
-          {/* 테이블 상단 매장구분 범례 (고정) */}
+          {/* 범례 */}
           <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-end gap-3 w-full z-30">
             <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest mr-2">매장구분</span>
             <span className="px-2.5 py-1 rounded-md text-[10px] font-black border" style={{ backgroundColor: '#dbeafe', color: '#1e3a8a', borderColor: '#bfdbfe' }}>마대+Y</span>
@@ -175,31 +187,58 @@ const DailyWork = () => {
             <span className="px-2.5 py-1 rounded-md text-[10px] font-black border" style={{ backgroundColor: '#ffedd5', color: '#7c2d12', borderColor: '#fed7aa' }}>월별+N</span>
           </div>
 
-          {/* 🚀 스크롤 영역: Grid의 1fr (남은 공간) 안에서 100%를 차지하며, 여기서만 스크롤이 돎 */}
-          <div className="overflow-auto w-full h-full bg-white custom-scrollbar" style={{ transform: 'translateZ(0)' }}>
-            
+          <div className="overflow-auto w-full h-full bg-white custom-scrollbar">
             <table className="w-max table-fixed border-separate border-spacing-0 text-sm">
+              
+              <colgroup>
+                <col style={{ width: '100px' }} />
+                {partners.map(p => (
+                  <col key={`col-${p.id}`} style={{ width: '100px' }} />
+                ))}
+                <col style={{ width: '100px' }} />
+              </colgroup>
+
               <thead>
                 <tr>
-                  <th 
-                    className="p-0 sticky top-0 left-0 bg-slate-800 text-white shadow-[1px_0_0_0_#334155] border-b border-slate-700" 
-                    style={{ zIndex: 50, width: '100px', minWidth: '100px', maxWidth: '100px' }}
-                  >
-                    <div className="w-full h-[50px] flex items-center justify-center font-bold text-[12px] tracking-widest uppercase box-border">
-                      Date
-                    </div>
+                  
+                  {/* 좌측 고정 (DATE) */}
+                  <th className="p-0 m-0 border-0 sticky top-0 left-0 bg-slate-800 text-white border-b border-r border-slate-700" style={{ zIndex: 70, width: '100px', minWidth: '100px', maxWidth: '100px', height: '64px', minHeight: '64px', maxHeight: '64px' }}>
+                    <div className="w-[100px] h-[64px] flex items-center justify-center font-bold text-[12px] tracking-widest uppercase box-border overflow-hidden">Date</div>
                   </th>
                   
-                  {partners.map(p => (
-                    <th key={p.id} className="p-0 sticky top-0 border-b border-inherit" style={getCategoryInlineStyle(p)}>
-                      {/* 글씨가 100px을 넘어가면 ... 처리 (truncate) */}
-                      <div className="w-full h-[50px] flex items-center justify-center border-r border-inherit box-border px-2 overflow-hidden">
-                        <div className="w-full truncate font-black text-[12px] text-center leading-tight" title={p.partnerName}>
-                          {p.partnerName}
+                  {/* 중앙 거래처 & 금액 */}
+                  {partners.map(p => {
+                    const amount = getPartnerAmount(p);
+                    return (
+                      <th key={`name-${p.id}`} className="p-0 m-0 border-0 sticky top-0 bg-white" style={{ zIndex: 60, width: '100px', minWidth: '100px', maxWidth: '100px', height: '64px', minHeight: '64px', maxHeight: '64px' }}>
+                        
+                        <div className="w-[100px] h-[64px] flex flex-col m-0 p-0 box-border overflow-hidden">
+                          
+                          {/* 위층: 거래처명 */}
+                          <div className="w-[100px] h-[32px] flex items-center justify-center px-1 border-b border-r box-border overflow-hidden" style={{ ...getCategoryInlineStyle(p), minHeight: '32px', maxHeight: '32px' }}>
+                            {/* 🚀 핵심: 빈 값이어도 공간을 차지하도록 \u00A0 추가, min-w-0 으로 truncate 무조건 발동 */}
+                            <span className="block w-full min-w-0 truncate font-black text-[12px] text-center" title={p.partnerName}>
+                              {p.partnerName || "\u00A0"}
+                            </span>
+                          </div>
+                          
+                          {/* 아래층: 정산 금액 */}
+                          <div className="w-[100px] h-[32px] flex items-center justify-center px-1 bg-slate-50 border-b border-r border-slate-200 box-border overflow-hidden" style={{ minHeight: '32px', maxHeight: '32px' }}>
+                            <span className="block w-full min-w-0 truncate text-[11px] font-bold text-slate-600 text-center tracking-tighter">
+                              {amount !== undefined && amount !== null ? `${amount.toLocaleString()}원` : "\u00A0"}
+                            </span>
+                          </div>
+
                         </div>
-                      </div>
-                    </th>
-                  ))}
+                      </th>
+                    );
+                  })}
+
+                  {/* 우측 고정 (DAILY) */}
+                  <th className="p-0 m-0 border-0 sticky top-0 right-0 bg-slate-800 text-white border-b border-l border-slate-700" style={{ zIndex: 70, width: '100px', minWidth: '100px', maxWidth: '100px', height: '64px', minHeight: '64px', maxHeight: '64px' }}>
+                    <div className="w-[100px] h-[64px] flex items-center justify-center font-bold text-[12px] tracking-widest uppercase box-border overflow-hidden">Daily</div>
+                  </th>
+                  
                 </tr>
               </thead>
               
@@ -208,6 +247,7 @@ const DailyWork = () => {
                   const dayNum = new Date(day).getDay();
                   const isSat = dayNum === 6;
                   const isSun = dayNum === 0;
+                  const dailyTotal = cells.filter(c => c.workDate === day).reduce((sum, c) => sum + (c.qty || 0), 0);
 
                   const rowBg = isSun ? "bg-red-50/60" : isSat ? "bg-blue-50/60" : "bg-white";
                   const dateColor = isSun ? "text-red-500" : isSat ? "text-blue-500" : "text-slate-800";
@@ -215,11 +255,9 @@ const DailyWork = () => {
 
                   return (
                     <tr key={day} className={`transition-colors hover:bg-slate-50`}>
-                      <td 
-                        className={`p-0 sticky left-0 border-b border-slate-300 shadow-[1px_0_0_0_#cbd5e1] ${rowBg}`} 
-                        style={{ zIndex: 30, width: '100px', minWidth: '100px', maxWidth: '100px' }}
-                      >
-                        <div className={`w-full h-[44px] flex flex-col items-center justify-center box-border`}>
+                      
+                      <td className={`p-0 sticky left-0 border-b border-r border-slate-200 ${rowBg}`} style={{ zIndex: 30, width: '100px', minWidth: '100px', maxWidth: '100px', height: '44px', padding: 0 }}>
+                        <div className="w-[100px] h-[44px] flex flex-col items-center justify-center box-border overflow-hidden">
                            <span className={`text-[13px] font-black ${dateColor}`}>
                             {day.slice(5).replace('-', '.')}
                           </span>
@@ -231,14 +269,9 @@ const DailyWork = () => {
                       
                       {partners.map(p => {
                         const cell = cells.find(c => c.partnerId === p.id && c.workDate === day);
-                        
                         return (
-                          <td 
-                            key={`${p.id}-${day}`} 
-                            className={`p-0 border-b border-r border-slate-200 ${rowBg}`}
-                            style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}
-                          >
-                            <div className="w-full h-[44px] flex items-center justify-center box-border p-0.5">
+                          <td key={`${p.id}-${day}`} className={`p-0 border-b border-r border-slate-200 ${rowBg}`} style={{ zIndex: 10, width: '100px', minWidth: '100px', maxWidth: '100px', height: '44px', padding: 0 }}>
+                            <div className="w-[100px] h-[44px] flex items-center justify-center box-border p-0.5 overflow-hidden">
                               <input
                                 id={`cell-${day}-${p.id}`}
                                 type="text"
@@ -252,6 +285,13 @@ const DailyWork = () => {
                           </td>
                         );
                       })}
+
+                      <td className={`p-0 sticky right-0 border-b border-l border-slate-200 bg-slate-50`} style={{ zIndex: 30, width: '100px', minWidth: '100px', maxWidth: '100px', height: '44px', padding: 0 }}>
+                        <div className="w-[100px] h-[44px] flex items-center justify-center font-black text-slate-800 text-[14px] box-border overflow-hidden">
+                          {dailyTotal > 0 ? dailyTotal.toLocaleString() : "-"}
+                        </div>
+                      </td>
+
                     </tr>
                   );
                 })}

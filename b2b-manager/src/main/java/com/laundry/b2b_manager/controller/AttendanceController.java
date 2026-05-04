@@ -12,7 +12,6 @@ import com.laundry.b2b_manager.service.AttendanceService;
 @RestController
 @RequestMapping("/api/attendance")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000")
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
