@@ -179,11 +179,10 @@ export default function Clients() {
           </button>
         </div>
 
-        {/* 🟢 반응형 속성 모두 제거, 무조건 좌우로 강제 분할 (flex-row) */}
-        <div className="flex flex-row gap-6 items-start w-full">
+        <div className="flex flex-row gap-6 items-start w-full h-full">
           
           {/* ================= 좌측: 거래처 목록 영역 ================= */}
-          <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col h-[750px] overflow-hidden min-w-[600px]">
+          <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col h-[780px] overflow-hidden min-w-[600px]">
             {/* 필터 바 */}
             <div className="p-4 border-b border-slate-100 flex gap-3 items-center justify-between bg-white shrink-0">
               <input
@@ -257,7 +256,7 @@ export default function Clients() {
 
           {/* ================= 우측: 입력 폼 영역 ================= */}
           {/* 강제로 350px 고정하고 절대 줄어들지 않도록(shrink-0) 설정 */}
-          <div className="w-[350px] shrink-0 bg-white border border-slate-200 rounded-xl shadow-sm p-5 h-[750px] flex flex-col overflow-y-auto">
+          <div className="w-[350px] shrink-0 bg-white border border-slate-200 rounded-xl shadow-sm p-5 h-[780px] flex flex-col overflow-y-auto">
             <div className="flex-1 space-y-6">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const DailyWork = () => {
   const [partners, setPartners] = useState([]);
@@ -8,7 +8,6 @@ const DailyWork = () => {
   const [days, setDays] = useState([]);
   const [cells, setCells] = useState([]);
   const [loading, setLoading] = useState(false);
-const API_BASE_URL = process.env.REACT_APP_API_URL || "";
   const companyCode = typeof window !== 'undefined' ? localStorage.getItem("companyCode") || "C001" : "C001";
 
   // 1. 거래처 데이터 로드
@@ -22,7 +21,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || "";
         }
       })
       .catch(err => console.error("데이터 로드 실패:", err));
-  }, []);
+  }, [companyCode]);
 
   // 2. 날짜 생성 및 데이터 매핑
   useEffect(() => {
@@ -100,7 +99,6 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || "";
     }
   };
 
-  // 인라인 테마 + 우선순위 40층으로 하향 조정 (사이드바 침범 방지)
   const getCategoryInlineStyle = (p) => {
     const storeType = (p.storeType || p.store_type || "").trim().toUpperCase();
     const vatYn = (p.vatYn || p.vat_yn || "Y").trim().toUpperCase();
@@ -118,38 +116,33 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || "";
       baseStyle = { backgroundColor: '#f1f5f9', color: '#1e293b', borderColor: '#e2e8f0' };
     }
     
-    return { ...baseStyle, zIndex: 40 };
+    // 넓이 100px 강제 고정
+    return { 
+      ...baseStyle, 
+      zIndex: 40,
+      width: '100px', 
+      minWidth: '100px', 
+      maxWidth: '100px' 
+    };
   };
 
-  const grandTotal = useMemo(() => cells.reduce((sum, c) => sum + (c.qty || 0), 0), [cells]);
-
   return (
-    // 🚀 핵심 1: 최상위 div에 `isolate`와 `z-0`을 주어 새로운 Stacking Context(격리실) 생성!
-    // 이렇게 하면 표 내부에서 어떤 z-index를 쓰든 사이드바(Navbar) 위로 절대 튀어나오지 못합니다.
-    <div className="w-full h-screen bg-slate-50 py-6 px-4 flex flex-col items-center overflow-hidden relative z-0 isolate">
+    // 전체 뷰포트를 채우는 배경 래퍼
+    <div className="w-full h-screen bg-slate-50 py-6 px-4 flex flex-col items-center">
       
-      <div className="w-full max-w-full lg:max-w-[95%] flex flex-col gap-4 h-full">
+      {/* 🚀 핵심 1: CSS Grid 적용.
+          grid-rows-[auto_1fr] -> 첫 번째 행(상단 컨트롤)은 내용물 높이만큼, 두 번째 행(하단 카드)은 남은 영역 전부를 강제 할당.
+          min-h-0 min-w-0 -> 내부 요소가 팽창하려고 할 때 Grid 사이즈를 뚫지 못하게 하는 강력한 방어선. */}
+      <div className="w-full h-full max-w-full lg:max-w-[95%] grid grid-rows-[auto_1fr] gap-4 min-h-0 min-w-0">
         
-        {/* 상단 컨트롤 */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shrink-0">
+        {/* 상단 컨트롤 영역 (밀림 현상 원천 차단) */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 w-full min-w-0">
           <div className="flex flex-col sm:flex-row items-center gap-8 border-slate-100 pr-2">
             <div>
               <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">배송 현황</h1>
               <p className="text-xs text-slate-400 mt-1 font-bold uppercase tracking-wider">
                 {loading ? "데이터 불러오는 중..." : "일별 상세 배송 관리"}
               </p>
-            </div>
-            
-            <div className="hidden sm:block w-px h-10 bg-slate-200"></div>
-
-            <div className="flex flex-col items-center sm:items-start">
-              <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-0.5">총합</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-slate-900 tracking-tighter">
-                  {grandTotal > 0 ? grandTotal.toLocaleString() : "0"}
-                </span>
-                <span className="text-3xl font-black text-slate-900 tracking-tighter">건</span>
-              </div>
             </div>
           </div>
           
@@ -169,10 +162,12 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || "";
           </div>
         </div>
 
-        {/* 메인 테이블 컨테이너 */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col relative">
+        {/* 🚀 핵심 2: 하단 테이블 카드 (이 안에서도 Grid 적용) 
+            내부 상단 범례(auto)와 하단 스크롤 테이블(1fr) 영역으로 나눔 */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm w-full grid grid-rows-[auto_1fr] overflow-hidden min-h-0 min-w-0">
           
-          <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-end gap-3 shrink-0 z-30">
+          {/* 테이블 상단 매장구분 범례 (고정) */}
+          <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-end gap-3 w-full z-30">
             <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest mr-2">매장구분</span>
             <span className="px-2.5 py-1 rounded-md text-[10px] font-black border" style={{ backgroundColor: '#dbeafe', color: '#1e3a8a', borderColor: '#bfdbfe' }}>마대+Y</span>
             <span className="px-2.5 py-1 rounded-md text-[10px] font-black border" style={{ backgroundColor: '#dcfce7', color: '#14532d', borderColor: '#bbf7d0' }}>마대+N</span>
@@ -180,60 +175,31 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || "";
             <span className="px-2.5 py-1 rounded-md text-[10px] font-black border" style={{ backgroundColor: '#ffedd5', color: '#7c2d12', borderColor: '#fed7aa' }}>월별+N</span>
           </div>
 
-          {/* 🚀 핵심 2: translateZ(0)를 주어 브라우저 GPU 렌더링을 강제 실행! (화면 크기 조절 안 해도 렌더링 완벽 방어) */}
-          <div className="flex-1 overflow-auto relative custom-scrollbar bg-white" style={{ transform: 'translateZ(0)' }}>
-            <table className="w-max min-w-full table-fixed border-separate border-spacing-0 text-sm">
-              
+          {/* 🚀 스크롤 영역: Grid의 1fr (남은 공간) 안에서 100%를 차지하며, 여기서만 스크롤이 돎 */}
+          <div className="overflow-auto w-full h-full bg-white custom-scrollbar" style={{ transform: 'translateZ(0)' }}>
+            
+            <table className="w-max table-fixed border-separate border-spacing-0 text-sm">
               <thead>
-                {/* 1행: 헤더 (교차점 50층, 중앙 40층) */}
                 <tr>
-                  <th className="p-0 sticky top-0 left-0 bg-slate-800 text-white shadow-[1px_0_0_0_#334155] border-b border-slate-700" style={{ zIndex: 50 }}>
-                    <div className="w-[100px] h-[50px] flex items-center justify-center font-bold text-[12px] tracking-widest uppercase box-border">
+                  <th 
+                    className="p-0 sticky top-0 left-0 bg-slate-800 text-white shadow-[1px_0_0_0_#334155] border-b border-slate-700" 
+                    style={{ zIndex: 50, width: '100px', minWidth: '100px', maxWidth: '100px' }}
+                  >
+                    <div className="w-full h-[50px] flex items-center justify-center font-bold text-[12px] tracking-widest uppercase box-border">
                       Date
                     </div>
                   </th>
                   
                   {partners.map(p => (
                     <th key={p.id} className="p-0 sticky top-0 border-b border-inherit" style={getCategoryInlineStyle(p)}>
-                      <div className="w-[85px] h-[50px] flex items-center justify-center border-r border-inherit box-border px-1">
-                        <div className="truncate font-black text-[12px] text-center leading-tight">
+                      {/* 글씨가 100px을 넘어가면 ... 처리 (truncate) */}
+                      <div className="w-full h-[50px] flex items-center justify-center border-r border-inherit box-border px-2 overflow-hidden">
+                        <div className="w-full truncate font-black text-[12px] text-center leading-tight" title={p.partnerName}>
                           {p.partnerName}
                         </div>
                       </div>
                     </th>
                   ))}
-                  
-                  <th className="p-0 sticky top-0 right-0 bg-slate-800 text-white shadow-[-1px_0_0_0_#334155] border-b border-slate-700" style={{ zIndex: 50 }}>
-                    <div className="w-[90px] h-[50px] flex items-center justify-center font-bold text-[12px] tracking-widest uppercase box-border">
-                      Daily
-                    </div>
-                  </th>
-                </tr>
-
-                {/* 2행: 월 합계 (교차점 50층, 중앙 40층 / top은 49px로 밀착) */}
-                <tr>
-                  <th className="p-0 sticky left-0 bg-blue-600 shadow-[1px_0_0_0_#cbd5e1] border-b border-slate-300" style={{ top: '39px', zIndex: 50 }}>
-                    <div className="w-[100px] h-[40px] flex items-center justify-center font-black text-slate-800 text-[11px] uppercase tracking-widest box-border">
-                      Monthly
-                    </div>
-                  </th>
-                  
-                  {partners.map(p => {
-                    const monthlyTotal = cells.filter(c => c.partnerId === p.id).reduce((sum, c) => sum + (c.qty || 0), 0);
-                    return (
-                      <th key={`total-${p.id}`} className="p-0 sticky bg-slate-100 border-b border-r border-slate-300" style={{ top: '39px', zIndex: 40 }}>
-                        <div className="w-[85px] h-[40px] flex items-center justify-center font-black text-blue-700 text-[13px] box-border">
-                          {monthlyTotal > 0 ? monthlyTotal.toLocaleString() : "-"}
-                        </div>
-                      </th>
-                    );
-                  })}
-                  
-                  <th className="p-0 sticky right-0 bg-blue-600 text-white shadow-[-1px_0_0_0_#1d4ed8] border-b border-blue-700" style={{ top: '39px', zIndex: 50 }}>
-                    <div className="w-[90px] h-[40px] flex items-center justify-center font-black text-[14px] box-border">
-                      {grandTotal > 0 ? grandTotal.toLocaleString() : "0"}
-                    </div>
-                  </th>
                 </tr>
               </thead>
               
@@ -242,7 +208,6 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || "";
                   const dayNum = new Date(day).getDay();
                   const isSat = dayNum === 6;
                   const isSun = dayNum === 0;
-                  const dailyTotal = cells.filter(c => c.workDate === day).reduce((sum, c) => sum + (c.qty || 0), 0);
 
                   const rowBg = isSun ? "bg-red-50/60" : isSat ? "bg-blue-50/60" : "bg-white";
                   const dateColor = isSun ? "text-red-500" : isSat ? "text-blue-500" : "text-slate-800";
@@ -250,10 +215,11 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || "";
 
                   return (
                     <tr key={day} className={`transition-colors hover:bg-slate-50`}>
-                      
-                      {/* 본문 행 모서리: 30층 (위쪽의 40~50층 헤더 밑으로 자연스럽게 들어감) */}
-                      <td className={`p-0 sticky left-0 border-b border-slate-300 shadow-[1px_0_0_0_#cbd5e1] ${rowBg}`} style={{ zIndex: 30 }}>
-                        <div className={`w-[100px] h-[44px] flex flex-col items-center justify-center box-border`}>
+                      <td 
+                        className={`p-0 sticky left-0 border-b border-slate-300 shadow-[1px_0_0_0_#cbd5e1] ${rowBg}`} 
+                        style={{ zIndex: 30, width: '100px', minWidth: '100px', maxWidth: '100px' }}
+                      >
+                        <div className={`w-full h-[44px] flex flex-col items-center justify-center box-border`}>
                            <span className={`text-[13px] font-black ${dateColor}`}>
                             {day.slice(5).replace('-', '.')}
                           </span>
@@ -267,8 +233,12 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || "";
                         const cell = cells.find(c => c.partnerId === p.id && c.workDate === day);
                         
                         return (
-                          <td key={`${p.id}-${day}`} className={`p-0 border-b border-r border-slate-200 ${rowBg}`}>
-                            <div className="w-[85px] h-[44px] flex items-center justify-center box-border p-0.5">
+                          <td 
+                            key={`${p.id}-${day}`} 
+                            className={`p-0 border-b border-r border-slate-200 ${rowBg}`}
+                            style={{ width: '100px', minWidth: '100px', maxWidth: '100px' }}
+                          >
+                            <div className="w-full h-[44px] flex items-center justify-center box-border p-0.5">
                               <input
                                 id={`cell-${day}-${p.id}`}
                                 type="text"
@@ -282,12 +252,6 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || "";
                           </td>
                         );
                       })}
-
-                      <td className="p-0 sticky right-0 bg-slate-50 border-b border-slate-300 shadow-[-1px_0_0_0_#cbd5e1]" style={{ zIndex: 30 }}>
-                        <div className="w-[90px] h-[44px] flex items-center justify-center font-black text-slate-800 text-[14px] box-border">
-                          {dailyTotal > 0 ? dailyTotal.toLocaleString() : "-"}
-                        </div>
-                      </td>
                     </tr>
                   );
                 })}
