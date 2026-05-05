@@ -7,7 +7,7 @@ import Clients from './pages/Clients';
 import DailyWork from './pages/DailyWork';
 import Attendance from './pages/Attendance';
 import TaxInvoice from './pages/TaxInvoice';
-
+import ProfitReport from './pages/ProfitReport';
 const MainLayout = () => {
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -34,6 +34,7 @@ function App() {
           <Route path="/dailyWork" element={<DailyWork />} />
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/taxInvoice" element={<TaxInvoice />} />
+          <Route path="/profitReport" element={<ProfitReport />} />
           
         </Route>
       </Routes>

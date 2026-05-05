@@ -18,9 +18,10 @@ const Navbar = () => {
   const menuItems = [
     { path: '/dashboard', icon: '📊', label: '대시보드' },
     { path: '/clients', icon: '🏢', label: '거래처 관리' },
-    { path: '/dailyWork', icon: '🚚', label: '매출 현황' },
+    { path: '/dailyWork', icon: '🚚', label: '배송 현황' },
     { path: '/attendance', icon: '📅', label: '근태 관리' },
     { path: '/taxInvoice', icon: '📑', label: '세금계산서 엑셀' },
+    { path: '/profitReport', icon: '📒', label: '월별 매출 레포트' },
     
   ];
 

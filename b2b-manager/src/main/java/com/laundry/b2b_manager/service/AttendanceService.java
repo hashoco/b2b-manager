@@ -19,8 +19,12 @@ public class AttendanceService {
     /**
      * 1. 마스터 그리드 조회 (직원정보 + 해당월 급여합계)
      */
-    public List<Map<String, Object>> getMasterList(String companyCode, String month) {
-        List<Employee> employees = employeeRepository.findByCompanyCode(companyCode);
+    /**
+     * 1. 마스터 그리드 조회 (직원정보 + 해당월 급여합계 + 검색조건)
+     */
+    public List<Map<String, Object>> getMasterList(String companyCode, String month, String name, String useYn) {
+        // 🚀 수정: 조건 검색 쿼리 사용
+        List<Employee> employees = employeeRepository.findByConditions(companyCode, name, useYn);
         List<Map<String, Object>> resultList = new ArrayList<>();
 
         for (Employee emp : employees) {
@@ -33,7 +37,7 @@ public class AttendanceService {
             map.put("note", emp.getNote());
             map.put("useYn", emp.getUseYn());
 
-            // 해당 월의 정산 기록(스냅샷)이 있는지 확인
+            // 스냅샷 조회
             Optional<MonthlySalary> ms = monthlySalaryRepository.findByCompanyCodeAndEmployeeIdAndWorkMonth(companyCode, emp.getId(), month);
             if (ms.isPresent()) {
                 map.put("totalHours", ms.get().getTotalHours());

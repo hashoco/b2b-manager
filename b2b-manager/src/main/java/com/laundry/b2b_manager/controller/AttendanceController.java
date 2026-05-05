@@ -17,9 +17,16 @@ public class AttendanceController {
     private final EmployeeRepository employeeRepository; // 단순 저장은 레포지토리 직접 사용
 
     // 1. 마스터 리스트 조회
+  // 1. 마스터 리스트 조회
     @GetMapping("/api/attendance/master-list")
-    public Map<String, Object> getMasterList(@RequestParam String companyCode, @RequestParam String month) {
-        List<Map<String, Object>> rows = attendanceService.getMasterList(companyCode, month);
+    public Map<String, Object> getMasterList(
+            @RequestParam String companyCode, 
+            @RequestParam String month,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false, defaultValue = "ALL") String useYn) {
+            
+        // 🚀 수정: 서비스 호출 시 파라미터 전달
+        List<Map<String, Object>> rows = attendanceService.getMasterList(companyCode, month, name, useYn);
         return Map.of("success", true, "rows", rows);
     }
 

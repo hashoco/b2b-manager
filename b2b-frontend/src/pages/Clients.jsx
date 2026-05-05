@@ -28,7 +28,7 @@ export default function Clients() {
 
   // 데이터 로드
   const loadPartners = async () => {
-    const companyCode = localStorage.getItem("companyCode") || "C001";
+    const companyCode = localStorage.getItem("companyCode");
     
     setLoading(true);
     try {
@@ -96,7 +96,7 @@ export default function Clients() {
   };
 
   const savePartner = async () => {
-    const companyCode = localStorage.getItem("companyCode") || "C001";
+    const companyCode = localStorage.getItem("companyCode");
     
     const body = {
       companyCode,
