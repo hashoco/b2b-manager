@@ -98,6 +98,11 @@ export default function Clients() {
   const savePartner = async () => {
     const companyCode = localStorage.getItem("companyCode");
     
+    if (!partnerName || partnerName.trim() === "") {
+     alert("거래처명은 필수 입력 항목입니다.");
+     
+      return; 
+    }
     const body = {
       companyCode,
       partnerCode: partnerCode.trim(),
@@ -163,7 +168,7 @@ export default function Clients() {
     // 부모 컨테이너에 overflow-x-auto를 주어 화면이 작아지면 가로 스크롤이 생기도록 함
     <div className="min-h-screen bg-slate-50 p-6 md:p-8 overflow-x-auto">
       {/* 화면 전체 최소 너비 강제 고정 */}
-      <div className="min-w-[1000px]">
+      <div>
         
         {/* 헤더 영역 */}
         <div className="mb-6 flex justify-between items-end">
@@ -186,7 +191,6 @@ export default function Clients() {
             {/* 필터 바 */}
             <div className="p-4 border-b border-slate-100 flex gap-3 items-center justify-between bg-white shrink-0">
               <input
-                value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
                 placeholder="거래처명 검색"
                 className="px-3 py-2 border border-slate-200 rounded-lg text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -256,7 +260,7 @@ export default function Clients() {
 
           {/* ================= 우측: 입력 폼 영역 ================= */}
           {/* 강제로 350px 고정하고 절대 줄어들지 않도록(shrink-0) 설정 */}
-          <div className="w-[350px] shrink-0 bg-white border border-slate-200 rounded-xl shadow-sm p-5 h-[780px] flex flex-col overflow-y-auto">
+          <div className="shrink-0 bg-white border border-slate-200 rounded-xl shadow-sm p-5 h-[780px] flex flex-col overflow-y-auto">
             <div className="flex-1 space-y-6">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">

@@ -134,10 +134,24 @@ const ProfitReport = () => {
     setManualExpenses([...manualExpenses, { id: newId, name: newCategoryName, amount: "" }]);
     setNewCategoryName("");
   };
-
-  const downloadPDF = async () => {
+const downloadPDF = async () => {
     const element = reportRef.current;
     if (!element) return;
+
+    // 🚀 1. 하단 데이터 잘림 방지: 캡처 직전 스크롤 영역을 완전히 펼침
+    const scrollAreas = element.querySelectorAll('.custom-scrollbar');
+    const originalStyles = [];
+    scrollAreas.forEach(area => {
+      // 나중에 복구하기 위해 원래 스타일 저장
+      originalStyles.push({
+        el: area,
+        maxHeight: area.style.maxHeight,
+        overflowY: area.style.overflowY
+      });
+      // 제약 해제 (전체 내용 노출)
+      area.style.maxHeight = 'none';
+      area.style.overflowY = 'visible';
+    });
 
     try {
       const canvas = await html2canvas(element, {
@@ -145,44 +159,93 @@ const ProfitReport = () => {
         backgroundColor: "#ffffff",
         logging: false,
         useCORS: true,
-        // 🚀 핵심 로직: 복제된 DOM에서 oklch 컬러를 모두 찾아 RGB로 변경
+        // 스크롤이 펼쳐진 전체 높이를 캔버스가 인식하도록 명시
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
         onclone: (clonedDoc) => {
+          // oklch 에러 차단
+          const styles = clonedDoc.querySelectorAll('style');
+          styles.forEach(style => {
+            if (style.innerHTML.includes('oklch')) {
+              style.innerHTML = style.innerHTML.replace(/oklch\([^)]+\)/g, '#cbd5e1');
+            }
+          });
+
           const reportElement = clonedDoc.querySelector('.pdf-content-area');
           if (reportElement) {
-            // 1. 모든 요소(*)를 돌면서 계산된 스타일 중 oklch가 있는지 확인
-            const allElements = reportElement.querySelectorAll('*');
-            allElements.forEach(el => {
-              const styles = window.getComputedStyle(el);
+            reportElement.style.backgroundColor = "#ffffff";
+
+            // 🚀 2. 금액 증발 방지: 캡처 시 input 태그를 span으로 변환하여 글씨 강제 고정
+            const inputs = reportElement.querySelectorAll('input');
+            inputs.forEach(input => {
+              const span = clonedDoc.createElement('span');
+              span.innerText = input.value || input.placeholder || '0';
+              span.className = input.className;
               
-              // 배경색(backgroundColor)이나 글자색(color)이 oklch인 경우 강제 변환
-              if (styles.backgroundColor.includes('oklch')) {
-                el.style.backgroundColor = '#ffffff'; // 배경은 흰색으로 안전하게
-              }
-              if (styles.color.includes('oklch')) {
-                el.style.color = '#1e293b'; // 글자는 어두운 네이비로 안전하게
-              }
-              // 테두리 등 기타 속성에서 oklch가 발생하지 않도록 초기화
-              el.style.borderColor = '#e2e8f0';
+              // 인풋 값의 폰트 색상 명시적 주입
+              let fontColor = '#1e293b'; 
+              if (input.classList.contains('text-blue-600')) fontColor = '#2563eb'; // 매출 금액
+              if (input.classList.contains('text-rose-600')) fontColor = '#e11d48'; // 인건비 금액
+              
+              span.style.color = fontColor;
+              span.style.display = 'inline-block';
+              span.style.backgroundColor = 'transparent';
+              
+              input.parentNode.replaceChild(span, input);
             });
 
-            // 2. CSS 변수(--p, --s 등)가 oklch를 물고 있는 경우를 대비해 직접 Hex 지정
-            reportElement.style.setProperty('--p', '#3b82f6', 'important');
-            reportElement.style.setProperty('--s', '#64748b', 'important');
-            reportElement.style.backgroundColor = "#ffffff";
+            // 🚀 3. 라벨 폰트 색상 강제 주입
+            const allElements = reportElement.querySelectorAll('*');
+            allElements.forEach(el => {
+              const computed = window.getComputedStyle(el);
+              
+              if (el.classList.contains('bg-slate-800')) {
+                el.style.backgroundColor = '#1e293b';
+                el.style.color = '#ffffff';
+              }
+              else if (el.classList.contains('text-blue-500') || el.classList.contains('text-blue-700')) {
+                el.style.color = '#3b82f6';
+              }
+              else if (el.classList.contains('text-rose-500') || el.classList.contains('text-rose-700') || el.classList.contains('text-red-500')) {
+                el.style.color = '#ef4444';
+              }
+              else if (el.classList.contains('text-emerald-500') || el.classList.contains('text-emerald-600')) {
+                el.style.color = '#10b981';
+              }
+              // 라벨 폰트 (매출총액, 인건비총액, 내역 텍스트 등) 명시적 보존
+              else if (el.classList.contains('text-slate-700')) {
+                el.style.color = '#334155';
+              }
+              else if (el.classList.contains('text-slate-800') || el.classList.contains('text-slate-900')) {
+                el.style.color = '#1e293b';
+              }
+              // 기본 텍스트 보호
+              else if (computed.color.includes('oklch') || computed.color === 'rgba(0, 0, 0, 0)') {
+                el.style.color = '#1e293b';
+              }
+            });
           }
         }
       });
 
-      const imgData = canvas.toDataURL("image/jpeg", 1.0);
+      const imgData = canvas.toDataURL("image/png", 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
+      // 확장된 캔버스 높이 비율을 그대로 적용하여 한 페이지에 모두 담거나 페이지를 늘림
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`월별매출레포트_${viewMonth}.pdf`);
+      
     } catch (error) {
       console.error("PDF 생성 오류", error);
-      alert("PDF 생성 중 오류가 발생했습니다. (컬러 포맷 충돌)");
+      alert("PDF 생성 중 오류가 발생했습니다.");
+    } finally {
+      // 🚀 4. 캡처 완료 후 화면 스크롤 원래대로 원상 복구
+      originalStyles.forEach(({ el, maxHeight, overflowY }) => {
+        el.style.maxHeight = maxHeight;
+        el.style.overflowY = overflowY;
+      });
     }
   };
 
@@ -309,18 +372,25 @@ const ProfitReport = () => {
                    </div>
                 )}
                 {manualExpenses.map((exp) => (
-                  <div key={exp.id} className="flex justify-between items-center p-2.5 border-b border-slate-100 hover:bg-slate-50 group">
-                    <span className="font-bold text-sm text-slate-700 pl-2 flex-1 truncate">{exp.name}</span>
-                    <div className="flex items-center gap-1 shrink-0 justify-end bg-transparent">
+                  <div key={exp.id} className="flex justify-between items-center py-4 px-3 border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <span className="font-bold text-base text-slate-700 pl-2 flex-1 truncate">{exp.name}</span>
+                    <div className="flex items-center gap-2 shrink-0 justify-end bg-transparent">
                       <input 
                         type="text" 
                         value={exp.amount === '' ? '' : Number(exp.amount).toLocaleString()} 
                         onChange={(e) => updateExpenseAmount(exp.id, e.target.value)}
                         placeholder="0"
-                        className="text-right font-black text-slate-800 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-2 py-1 w-32 text-sm"
+                        className="text-right font-black text-slate-800 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-slate-300 rounded px-2 py-1.5 w-36 text-base"
                       />
-                      <span className="text-xs font-bold text-slate-400 w-4">원</span>
-                      <button onClick={() => removeExpense(exp.id)} data-html2canvas-ignore className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 ml-1 transition-opacity text-xs w-4">✖</button>
+                      <span className="text-sm font-bold text-slate-400 w-4">원</span>
+                      <button 
+                        onClick={() => removeExpense(exp.id)} 
+                        data-html2canvas-ignore 
+                        className="text-slate-400 hover:text-red-500 ml-2 transition-colors text-sm font-bold px-1 shrink-0"
+                        title="항목 삭제"
+                      >
+                        ✖ 삭제
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -332,7 +402,6 @@ const ProfitReport = () => {
                   placeholder="새 항목명 (예: 영업비)" 
                   value={newCategoryName}
                   onChange={e => setNewCategoryName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addNewExpense()}
                   className="flex-1 px-3 py-1 text-xs font-bold border border-slate-300 rounded outline-none focus:border-blue-500"
                 />
                 <button onClick={addNewExpense} className="bg-slate-800 text-white px-3 text-xs font-bold rounded hover:bg-slate-900 transition-colors">추가</button>

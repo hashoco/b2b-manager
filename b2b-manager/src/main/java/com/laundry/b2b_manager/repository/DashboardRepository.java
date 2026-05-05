@@ -32,7 +32,7 @@ public interface DashboardRepository extends JpaRepository<ClientCompany, Long> 
             WHERE work_date >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 12 MONTH), '%Y-%m-01')
               AND work_date < DATE_FORMAT(NOW(), '%Y-%m-01')
             GROUP BY partner_id, DATE_FORMAT(work_date, '%Y-%m')
-            HAVING SUM(qty) <> 0
+            
         ) dw ON c.id = dw.partner_id
         WHERE c.use_yn = 'Y'
         AND c.company_code = :companyCode
@@ -58,7 +58,7 @@ public interface DashboardRepository extends JpaRepository<ClientCompany, Long> 
             WHERE work_date >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH), '%Y-%m-01')
               AND work_date < DATE_FORMAT(NOW(), '%Y-%m-01')
             GROUP BY partner_id 
-            HAVING SUM(qty) <> 0
+            
         ) dw ON c.id = dw.partner_id
         WHERE c.use_yn = 'Y'
           AND c.company_code = :companyCode
@@ -83,7 +83,7 @@ public interface DashboardRepository extends JpaRepository<ClientCompany, Long> 
             WHERE work_date >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 2 MONTH), '%Y-%m-01')
               AND work_date < DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH), '%Y-%m-01')
             GROUP BY partner_id 
-            HAVING SUM(qty) <> 0
+            
         ) dw ON c.id = dw.partner_id
         WHERE c.use_yn = 'Y'
           AND c.company_code = :companyCode
@@ -125,7 +125,7 @@ public interface DashboardRepository extends JpaRepository<ClientCompany, Long> 
             WHERE work_date >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH), '%Y-%m-01')
               AND work_date < DATE_FORMAT(NOW(), '%Y-%m-01')
             GROUP BY partner_id
-            HAVING SUM(qty) <> 0
+            
         ) dw ON c.id = dw.partner_id
         WHERE c.use_yn = 'Y'
         AND c.company_code = :companyCode
@@ -135,4 +135,6 @@ public interface DashboardRepository extends JpaRepository<ClientCompany, Long> 
     
     List<Map<String, Object>> getTop10PartnerSales(@Param("companyCode") String companyCode);
     
+    @Query(value = "SELECT COUNT(*) FROM employee WHERE company_code = :companyCode AND use_yn = :useYn", nativeQuery = true)
+    Long countEmployeeByUseYnAndCompanyCode(@Param("useYn") String useYn, @Param("companyCode") String companyCode);
 }

@@ -15,41 +15,37 @@ public class DashboardController {
 
     private final DashboardRepository dashboardRepository;
 
-    @GetMapping("/summary")
+   @GetMapping("/summary")
     public ResponseEntity<?> getSummary(@RequestParam String companyCode) {
         Map<String, Object> summary = new HashMap<>();
         
-        // 💡 1. 모든 Repository 메서드 호출 시 companyCode 파라미터 전달
+        // 1. 전월 및 전전월 매출 조회 (null 방어 로직)
         Long lastMonthSales = dashboardRepository.calculateLastMonthSales(companyCode);
         Long twoMonthsAgoSales = dashboardRepository.calculateTwoMonthsAgoSales(companyCode);
         
-        // null 방어 로직 추가 (DB에 데이터가 아예 없을 경우 에러 방지)
         lastMonthSales = (lastMonthSales != null) ? lastMonthSales : 0L;
         twoMonthsAgoSales = (twoMonthsAgoSales != null) ? twoMonthsAgoSales : 0L;
 
+        // 2. 매출 증감률 계산
         double changeRate = 0.0;
         if (twoMonthsAgoSales > 0) {
-            // 공식: ((전월 - 전전월) / 전전월) * 100
             changeRate = ((double) (lastMonthSales - twoMonthsAgoSales) / twoMonthsAgoSales) * 100;
         } else if (twoMonthsAgoSales == 0 && lastMonthSales > 0) {
             changeRate = 100.0;
         }
         changeRate = Math.round(changeRate * 10.0) / 10.0;
 
-        // 💡 companyCode 전달
-        String totalWorkTime = dashboardRepository.calculateLastMonthTotalWorkTime(companyCode);
+        // 💡 3. 직원 수 현황 (기존 totalWorkTime 로직 대체)
+        long employeeCount = dashboardRepository.countEmployeeByUseYnAndCompanyCode("Y", companyCode);
         
-        // 데이터가 아예 없을 경우의 예외 처리
-        if (totalWorkTime == null) {
-            totalWorkTime = "0시간 00분";
-        }
-        
-        summary.put("totalWorkTime", totalWorkTime); 
+        // 💡 4. 거래처 현황
+        long partnerCount = dashboardRepository.countByUseYnAndCompanyCode("Y", companyCode);
+        System.out.println("employeeCount"+ employeeCount);
+        // 5. 결과 맵핑 (프론트엔드 변수명과 일치)
         summary.put("lastMonthSales", lastMonthSales);
         summary.put("changeRate", changeRate);
-        
-        // 💡 countByUseYn 메서드도 회사코드 필터링이 들어간 메서드로 변경
-        summary.put("partnerCount", dashboardRepository.countByUseYnAndCompanyCode("Y", companyCode)); 
+        summary.put("employeeCount", employeeCount); // 👉 프론트엔드의 data.employeeCount 로 전달됨
+        summary.put("partnerCount", partnerCount); 
         
         return ResponseEntity.ok(summary);
     }

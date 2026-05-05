@@ -3,7 +3,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell
 } from 'recharts';
-import { Link } from 'react-router-dom'; // 파일 상단에 추가
+import { Link } from 'react-router-dom';
+
 /* ============================
       헬퍼 함수 & 커스텀 컴포넌트
 ============================ */
@@ -49,7 +50,7 @@ const Dashboard = () => {
         const rawMonthlyData = m?.monthlySales || m;
         const validMonthlyData = Array.isArray(rawMonthlyData) ? rawMonthlyData : [];
 
-        // 💡 [추가된 로직] 최근 12개월의 '빈 틀'을 만들고, DB에 없는 달은 0으로 채움
+        // 💡 최근 12개월의 '빈 틀'을 만들고, DB에 없는 달은 0으로 채움
         const filledMonthlyData = [];
         // 기준 시점 설정 (실제 운영 시에는 new Date()를 사용, 현재는 DB 테스트 데이터인 2026년 6월 1일 기준)
         const today = new Date("2026-06-01"); 
@@ -94,10 +95,10 @@ const Dashboard = () => {
       </div>
     );
   }
-
-  // 데이터가 없을 경우를 대비한 기본값 처리
-  const data = summary || { thisMonthSales: 0, lastMonthSales: 0, changeRate: 0, partnerCount: 0 };
-  const salesDiff = data.thisMonthSales - data.lastMonthSales;
+const data = summary || { thisMonthSales: 0, lastMonthSales: 0, changeRate: 0, partnerCount: 0 };
+  
+  const changeRateValue = Number(data.changeRate) || 0;
+  const isPositiveGrowth = changeRateValue >= 0;
 
   // 렌더링 시 map() 에러를 방지하는 2중 안전 장치 변수
   const safeMonthlySales = Array.isArray(monthlySales) ? monthlySales : [];
@@ -123,19 +124,25 @@ const Dashboard = () => {
           <p className="text-3xl font-black text-slate-900 mt-2">
             ₩ {formatNumber(data.lastMonthSales)}
           </p>
-          <div className={`inline-flex items-center gap-1 mt-4 px-2 py-0.5 rounded border text-[11px] font-black ${getBadgeColor(salesDiff)}`}>
-            {salesDiff >= 0 ? "▲" : "▼"} {Math.abs(data.changeRate || 0)}%
-            
+          {/* 🚀 수정된 로직 적용: 증감률(changeRate) 자체를 기준으로 색상과 기호 결정 */}
+          <div className={`inline-flex items-center gap-1 mt-4 px-2 py-0.5 rounded border text-[11px] font-black ${getBadgeColor(changeRateValue)}`}>
+            {isPositiveGrowth ? "▲" : "▼"} {Math.abs(changeRateValue)}%
           </div>
         </div>
 
-     {/* 전월 총 근무시간 */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm border-l-4 border-l-indigo-500 transition-hover hover:shadow-md">
-          <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider text-indigo-500">전월 직원 근태 관리</h3>
+        {/* 전월 총 근무시간 */}
+     {/* 직원 수 현황 (기존 근태 관리 카드 대체) */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-hover hover:shadow-md">
+          <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">직원 수 현황</h3>
           <p className="text-3xl font-black text-slate-900 mt-2">
-            {data.totalWorkTime || "0시간 00분"}
+            {data.employeeCount || 0} <span className="text-base font-bold text-slate-400">명</span>
           </p>
-          <p className="text-[10px] text-slate-400 mt-4 font-bold">월별 누적 근무시간</p>
+          <Link 
+            to="/attendance" 
+            className="text-[11px] text-blue-600 mt-4 font-bold cursor-pointer hover:text-blue-800 block w-fit"
+          >
+            근태 관리 이동 →
+          </Link>
         </div>
 
         {/* 활성 거래처 수 */}
@@ -145,11 +152,11 @@ const Dashboard = () => {
             {data.partnerCount} <span className="text-base font-bold text-slate-400">곳</span>
           </p>
           <Link 
-  to="/clients" 
-  className="text-[11px] text-blue-600 mt-4 font-bold cursor-pointer hover:text-blue-800 block w-fit"
->
-  거래처 관리 이동 →
-</Link>
+            to="/clients" 
+            className="text-[11px] text-blue-600 mt-4 font-bold cursor-pointer hover:text-blue-800 block w-fit"
+          >
+            거래처 관리 이동 →
+          </Link>
         </div>
       </div>
 
