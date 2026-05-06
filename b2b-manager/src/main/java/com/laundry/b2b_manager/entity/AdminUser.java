@@ -2,6 +2,7 @@ package com.laundry.b2b_manager.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 @Entity
 @Table(name = "admin_user")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -26,4 +27,9 @@ public class AdminUser {
     
     @Column(name = "company_code", nullable = false)
     private String companyCode; 
+
+    // 🚀 최초 로그인 여부 (기본값 'Y')
+    @Builder.Default
+    @Column(name = "is_first_login", nullable = false, length = 1)
+    private String isFirstLogin = "Y";
 }

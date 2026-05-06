@@ -14,7 +14,7 @@ const Navbar = () => {
     navigate('/');
   };
 
-  // 메뉴 리스트 데이터
+  // 메뉴 리스트 데이터 (업무 관련 메인 메뉴)
   const menuItems = [
     { path: '/dashboard', icon: '📊', label: '대시보드' },
     { path: '/clients', icon: '🏢', label: '거래처 관리' },
@@ -22,18 +22,17 @@ const Navbar = () => {
     { path: '/attendance', icon: '📅', label: '근태 관리' },
     { path: '/taxInvoice', icon: '📑', label: '세금계산서 엑셀' },
     { path: '/profitReport', icon: '📒', label: '월별 매출 레포트' },
-    
   ];
 
   return (
-<nav 
-  className={`fixed top-0 left-0 h-screen bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out flex flex-col
-    ${isHovered ? 'w-64' : 'w-20'}
-  `}
-  style={{ zIndex: 9999 }} // 🚀 핵심: Tailwind를 무시하고 브라우저에 직접 최상단 고정 명령
-  onMouseEnter={() => setIsHovered(true)}
-  onMouseLeave={() => setIsHovered(false)}
->
+    <nav 
+      className={`fixed top-0 left-0 h-screen bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out flex flex-col
+        ${isHovered ? 'w-64' : 'w-20'}
+      `}
+      style={{ zIndex: 9999 }} // 🚀 핵심: Tailwind를 무시하고 브라우저에 직접 최상단 고정 명령
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       {/* 로고 영역 */}
       <div className="h-20 flex items-center justify-center border-b border-slate-800">
         <span className="text-2xl font-extrabold text-white tracking-wider whitespace-nowrap overflow-hidden">
@@ -63,8 +62,23 @@ const Navbar = () => {
         ))}
       </div>
 
-      {/* 하단 프로필 & 로그아웃 영역 */}
-      <div className="p-4 border-t border-slate-800">
+      {/* 🚀 하단 설정 & 로그아웃 영역 */}
+      <div className="p-4 border-t border-slate-800 flex flex-col space-y-2 overflow-x-hidden">
+        
+        {/* 비밀번호 변경 버튼 추가 */}
+        <Link 
+          to="/change-password"
+          className={`flex items-center w-full px-4 py-3 rounded-xl transition-colors duration-200 
+            ${isActive('/change-password') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
+          `}
+        >
+          <span className="text-xl shrink-0">🔒</span>
+          <span className={`ml-4 font-semibold whitespace-nowrap transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+            비밀번호 변경
+          </span>
+        </Link>
+
+        {/* 기존 로그아웃 버튼 */}
         <button 
           onClick={handleLogout}
           className="flex items-center w-full px-4 py-3 rounded-xl hover:bg-slate-800 transition-colors duration-200 text-slate-400 hover:text-white"

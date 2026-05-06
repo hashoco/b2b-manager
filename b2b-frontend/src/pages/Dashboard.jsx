@@ -213,6 +213,7 @@ const data = summary || { thisMonthSales: 0, lastMonthSales: 0, changeRate: 0, p
                 tick={<CustomYAxisTick />} 
                 axisLine={false} 
                 tickLine={false} 
+                interval={0}
               />
               <Tooltip 
                 cursor={{fill: '#f8fafc'}}

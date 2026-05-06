@@ -8,6 +8,9 @@ import DailyWork from './pages/DailyWork';
 import Attendance from './pages/Attendance';
 import TaxInvoice from './pages/TaxInvoice';
 import ProfitReport from './pages/ProfitReport';
+import ChangePassword from './pages/ChangePassword'; 
+import ChangePasswordInit from './pages/ChangePasswordInit';
+
 const MainLayout = () => {
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -35,7 +38,8 @@ function App() {
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/taxInvoice" element={<TaxInvoice />} />
           <Route path="/profitReport" element={<ProfitReport />} />
-          
+          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/change-password-init" element={<ChangePasswordInit />} />
         </Route>
       </Routes>
     </BrowserRouter>
