@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import dayjs from "dayjs";
+import { apiFetch } from "../../utils/api"; // 🚀 공통 API 함수 임포트
 
 const Attendance = () => {
-  const companyCode =  localStorage.getItem("companyCode") ;
+  const companyCode = localStorage.getItem("companyCode");
 
-  // --- 상태 관리 ---
+  // 상태 관리
   const [viewMonth, setViewMonth] = useState(dayjs().format("YYYY-MM")); 
   const [masterList, setMasterList] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -16,38 +17,41 @@ const Attendance = () => {
   const [searchName, setSearchName] = useState("");
   const [searchUseYn, setSearchUseYn] = useState("ALL");
 
-  // 모달 제어
+  // 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("add"); 
   const [formData, setFormData] = useState({ id: null, name: "", insurance: "Y", phone: "", wage: 9860, note: "", useYn: "Y" });
 
-  // 1. 마스터 리스트 로드 (백엔드 검색조건 연동 완료)
+  // 직원 목록 조회
   const loadMasterList = async () => {
     try {
-      const res = await fetch(`/api/attendance/master-list?companyCode=${companyCode}&month=${viewMonth}&name=${searchName}&useYn=${searchUseYn}`);
+      const res = await apiFetch(`/api/attendance/master-list?companyCode=${companyCode}&month=${viewMonth}&name=${searchName}&useYn=${searchUseYn}`);
       const data = await res.json();
       if (data.success) {
         setMasterList(data.rows);
       }
-    } catch (e) { console.error("마스터 리스트 조회 실패", e); }
+    } catch (e) { 
+      console.error("마스터 리스트 조회 실패", e); 
+    }
   };
 
   useEffect(() => {
     loadMasterList();
     setSelectedId(null);
     setRows([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMonth]);
 
-  // 2. 직원 선택 시 상세 근태 로드
+  // 직원 선택 시 상세 근태 로드
   useEffect(() => {
     if (selectedId) loadAttendanceDetails(selectedId, viewMonth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, viewMonth]);
 
   const loadAttendanceDetails = async (empId, month) => {
     try {
-      const res = await fetch(`/api/attendance/read`, {
+      const res = await apiFetch(`/api/attendance/read`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyCode, employeeId: empId, month })
       });
       const data = await res.json();
@@ -60,19 +64,24 @@ const Attendance = () => {
           generateMonthData(month);
         }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      console.error(e); 
+    }
   };
 
+  // 신규 월 데이터 생성 (기본값 세팅)
   const generateMonthData = (targetMonth) => {
     const start = dayjs(`${targetMonth}-01`);
     const daysInMonth = start.daysInMonth();
     const newRows = [];
+    
     for (let i = 1; i <= daysInMonth; i++) {
       const dateObj = start.date(i);
       const isSun = dateObj.day() === 0;
       const defaultIn = isSun ? "00:00" : "08:30";
       const defaultOut = isSun ? "00:00" : "12:30";
       const work = calcWorkTime(defaultIn, defaultOut);
+      
       newRows.push({
         date: dateObj.format("YYYY-MM-DD"),
         inTime: defaultIn,
@@ -85,14 +94,16 @@ const Attendance = () => {
     setRows(newRows);
   };
 
+  // 근무 시간 계산
   const calcWorkTime = (inTime, outTime) => {
     if (!inTime || !outTime) return { calc: "0:00", hours: 0, minutes: 0 };
     const [inH, inM] = inTime.split(":").map(Number);
     const [outH, outM] = outTime.split(":").map(Number);
     let start = inH * 60 + inM;
     let end = outH * 60 + outM;
-    if (end < start) end += 1440;
+    if (end < start) end += 1440; // 자정 넘김 처리
     const total = end - start;
+    
     return {
       calc: `${Math.floor(total / 60)}시간 ${(total % 60).toString().padStart(2, "0")}분`,
       hours: Math.floor(total / 60),
@@ -112,6 +123,7 @@ const Attendance = () => {
     setRows(currentRows);
   };
 
+  // 방향키 이동
   const handleArrowKey = (e, idx, field) => {
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       e.preventDefault();
@@ -124,7 +136,7 @@ const Attendance = () => {
     setSelectedId(prev => (prev === id ? null : id));
   };
 
-  // --- 버튼 이벤트 ---
+  // 직원 관리 모달 이벤트
   const handleAdd = () => {
     setModalMode("add");
     setFormData({ id: null, name: "", insurance: "Y", phone: "", wage: 9860, note: "", useYn: "Y" });
@@ -142,10 +154,10 @@ const Attendance = () => {
   const handleDelete = async () => {
     if (!selectedId) return alert("삭제할 직원을 선택해주세요.");
     const target = masterList.find(e => e.id === selectedId);
+    
     if (window.confirm(`${target.name}님을 삭제하시겠습니까?`)) {
-      await fetch(`/api/employees/save`, {
+      await apiFetch(`/api/employees/save`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyCode, ...target, useYn: "N" })
       });
       alert("사용안함 처리되었습니다.");
@@ -153,27 +165,22 @@ const Attendance = () => {
     }
   };
 
-  // 🚀 필수값 유효성 검사 로직 적용
+  // 직원 정보 저장
   const handleSaveModal = async () => {
-    if (!formData.name || formData.name.trim() === "") {
-      return alert("성명을 입력하세요.");
-    }
-    if (!formData.insurance) {
-      return alert("사대보험 여부를 선택하세요.");
-    }
-    if (!formData.wage || formData.wage <= 0) {
-      return alert("기본 시급을 올바르게 입력하세요.");
-    }
+    if (!formData.name?.trim()) return alert("성명을 입력하세요.");
+    if (!formData.insurance) return alert("사대보험 여부를 선택하세요.");
+    if (!formData.wage || formData.wage <= 0) return alert("기본 시급을 올바르게 입력하세요.");
 
-    await fetch(`/api/employees/save`, {
+    await apiFetch(`/api/employees/save`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ companyCode, ...formData })
     });
+    
     setIsModalOpen(false);
     loadMasterList();
   };
 
+  // 근태 상세 저장
   const saveAttendance = async () => {
     const formattedRows = rows.map(r => ({
       workDate: r.date,
@@ -184,9 +191,8 @@ const Attendance = () => {
       workCalc: r.workCalc
     }));
 
-    const res = await fetch(`/api/attendance/save`, {
+    const res = await apiFetch(`/api/attendance/save`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ companyCode, employeeId: selectedId, month: viewMonth, appliedWage, rows: formattedRows })
     });
     
@@ -196,6 +202,7 @@ const Attendance = () => {
     }
   };
 
+  // 합계 계산
   const totalMasterSalary = useMemo(() => {
     return masterList.reduce((sum, emp) => sum + (emp.totalSalary || 0), 0);
   }, [masterList]);
@@ -241,10 +248,9 @@ const Attendance = () => {
               placeholder="성명 검색" 
               value={searchName} 
               onChange={e => setSearchName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && loadMasterList()} // 엔터키로도 조회 가능
+              onKeyDown={e => e.key === 'Enter' && loadMasterList()}
               className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none w-28 focus:ring-2 focus:ring-blue-500"
             />
-
             <button onClick={loadMasterList} style={{ backgroundColor: '#1e293b', color: 'white' }} className="text-xs font-bold px-4 py-1.5 rounded-lg transition-all active:scale-95 ml-1">조회</button>
           </div>
         </div>
@@ -258,11 +264,8 @@ const Attendance = () => {
 
       <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
         
-        {/* ================================== */}
-        {/* 마스터 그리드 */}
-        {/* ================================== */}
+        {/* 마스터 그리드 (직원 목록) */}
         <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${selectedId ? 'flex-none' : 'flex-1'}`}>
-          
           <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center px-6 shrink-0">
             <span className="text-sm font-black text-slate-800 tracking-tight">
               {viewMonth} 총급여 합계: <span className="text-rose-600 ml-1">{totalMasterSalary.toLocaleString()}원</span>
@@ -316,9 +319,7 @@ const Attendance = () => {
           </div>
         </div>
 
-        {/* ================================== */}
-        {/* 디테일 그리드 */}
-        {/* ================================== */}
+        {/* 디테일 그리드 (상세 근태 명세) */}
         {selectedId && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div style={{ backgroundColor: '#1e293b', color: 'white' }} className="p-3 border-b border-slate-100 flex justify-between items-center px-6 shrink-0">
@@ -384,7 +385,7 @@ const Attendance = () => {
         )}
       </div>
 
-      {/* 모달 강제 렌더링 영역 */}
+      {/* 직원 정보 추가/수정 모달 */}
       {isModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15, 23, 42, 0.6)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div style={{ backgroundColor: 'white', borderRadius: '1.5rem', width: '100%', maxWidth: '450px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>

@@ -4,6 +4,8 @@ import {
   BarChart, Bar, Cell
 } from 'recharts';
 import { Link } from 'react-router-dom';
+// 🚀 1. 방금 만든 apiFetch 함수를 임포트합니다. (경로는 실제 파일 위치에 맞게 조정하세요)
+import { apiFetch } from '../../utils/api'; 
 
 /* ============================
       헬퍼 함수 & 커스텀 컴포넌트
@@ -37,10 +39,11 @@ const Dashboard = () => {
       const companyCode = localStorage.getItem("companyCode");
       
       try {
+        // 🚀 2. 기본 fetch 대신 헤더에 토큰을 실어주는 apiFetch를 사용합니다!
         const [s, m, p] = await Promise.all([
-          fetch(`/api/dashboard/summary?companyCode=${companyCode}`).then(r => r.json()),
-          fetch(`/api/dashboard/monthly-sales?companyCode=${companyCode}`).then(r => r.json()),
-          fetch(`/api/dashboard/partners?companyCode=${companyCode}`).then(r => r.json())
+          apiFetch(`/api/dashboard/summary?companyCode=${companyCode}`).then(r => r.json()),
+          apiFetch(`/api/dashboard/monthly-sales?companyCode=${companyCode}`).then(r => r.json()),
+          apiFetch(`/api/dashboard/partners?companyCode=${companyCode}`).then(r => r.json())
         ]);
 
         // 1. Summary 세팅

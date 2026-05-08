@@ -1,15 +1,19 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
+import Login from './pages/auth/Login';
+import SignUp from './pages/auth/SignUp'; // 🚀 추가: 회원가입 컴포넌트 임포트
+import Dashboard from './pages/dashboard/Dashboard';
 import Navbar from './components/Navbar';
-import Clients from './pages/Clients'; 
-import DailyWork from './pages/DailyWork';
-import Attendance from './pages/Attendance';
-import TaxInvoice from './pages/TaxInvoice';
-import ProfitReport from './pages/ProfitReport';
-import ChangePassword from './pages/ChangePassword'; 
-import ChangePasswordInit from './pages/ChangePasswordInit';
+import Clients from './pages/partners/Clients'; 
+import DailyWork from './pages/work/DailyWork';
+import Attendance from './pages/hr/Attendance';
+import TaxInvoice from './pages/finance/TaxInvoice';
+import ProfitReport from './pages/finance/ProfitReport';
+import ChangePassword from './pages/auth/ChangePassword'; 
+import ChangePasswordInit from './pages/auth/ChangePasswordInit'
+import ForgotPassword from './pages/auth/ForgotPassword'; 
+
+
 
 const MainLayout = () => {
   return (
@@ -29,8 +33,13 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* 🚀 MainLayout 밖의 독립적인 페이지들 (사이드바 없음) */}
         <Route path="/" element={<Login />} />
-        
+        <Route path="/login" element={<Login />} /> {/* 명시적 로그인 경로 추가 추천 */}
+        <Route path="/signup" element={<SignUp />} /> {/* 🚀 추가: 회원가입 라우트 */}
+        <Route path="/change-password-init" element={<ChangePasswordInit />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+        {/* MainLayout 안의 페이지들 (사이드바 있음) */}
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/clients" element={<Clients />} /> 
@@ -39,8 +48,10 @@ function App() {
           <Route path="/taxInvoice" element={<TaxInvoice />} />
           <Route path="/profitReport" element={<ProfitReport />} />
           <Route path="/change-password" element={<ChangePassword />} />
-          <Route path="/change-password-init" element={<ChangePasswordInit />} />
+          
+          
         </Route>
+        
       </Routes>
     </BrowserRouter>
   );

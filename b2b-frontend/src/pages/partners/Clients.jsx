@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { apiFetch } from "../../utils/api"; // 🚀 공통 API 함수 임포트
 
 export default function Clients() {
   const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // 폼 입력 상태
+  // 폼 상태
   const [partnerCode, setPartnerCode] = useState("");
   const [partnerName, setPartnerName] = useState("");
   const [bizRegNo, setBizRegNo] = useState("");
@@ -21,21 +22,22 @@ export default function Clients() {
   const [storeType, setStoreType] = useState("BAG");
   const [useYn, setUseYn] = useState("Y");
 
-  // 검색 및 필터
+  // 검색 및 필터 상태
   const [searchName, setSearchName] = useState("");
   const [vatFilter, setVatFilter] = useState("ALL");
-  
 
-  // 데이터 로드
+  // 목록 조회
   const loadPartners = async () => {
     const companyCode = localStorage.getItem("companyCode");
-    
     setLoading(true);
+    
     try {
-      const res = await fetch(`/api/partners/list?companyCode=${companyCode}`);
+      // 🚀 기본 fetch 대신 apiFetch 사용 (토큰 자동 포함)
+      const res = await apiFetch(`/api/partners/list?companyCode=${companyCode}`);
       const data = await res.json();
       
       if (data.success && data.partners) {
+        // 숫자 시작명 우선 정렬
         const sorted = data.partners.sort((a, b) => {
           const aIsNum = /^[0-9]/.test(a.partnerName);
           const bIsNum = /^[0-9]/.test(b.partnerName);
@@ -58,19 +60,18 @@ export default function Clients() {
     loadPartners();
   }, []);
 
+  // 금액 포맷 (콤마 처리)
   const formatComma = (value) => {
     if (!value) return "";
     return Number(value.toString().replace(/,/g, "")).toLocaleString();
   };
 
   const handleAmountChange = (value) => {
-    const onlyNumber = value.replace(/[^\d]/g, "");
-    setExpectedAmount(formatComma(onlyNumber));
+    setExpectedAmount(formatComma(value.replace(/[^\d]/g, "")));
   };
 
   const handleDeliveryFeeChange = (value) => {
-    const onlyNumber = value.replace(/[^\d]/g, "");
-    setDeliveryFee(formatComma(onlyNumber));
+    setDeliveryFee(formatComma(value.replace(/[^\d]/g, "")));
   };
 
   const displayStoreType = (t) => {
@@ -79,6 +80,7 @@ export default function Clients() {
     return "-";
   };
 
+  // 폼 초기화
   const resetForm = () => {
     setPartnerCode("");
     setPartnerName("");
@@ -95,14 +97,15 @@ export default function Clients() {
     setUseYn("Y");
   };
 
+  // 거래처 저장
   const savePartner = async () => {
     const companyCode = localStorage.getItem("companyCode");
     
-    if (!partnerName || partnerName.trim() === "") {
-     alert("거래처명은 필수 입력 항목입니다.");
-     
+    if (!partnerName?.trim()) {
+      alert("거래처명은 필수 입력 항목입니다.");
       return; 
     }
+
     const body = {
       companyCode,
       partnerCode: partnerCode.trim(),
@@ -121,9 +124,9 @@ export default function Clients() {
     };
 
     try {
-      const res = await fetch(`/api/partners/save`, {
+      // 🚀 기본 fetch 대신 apiFetch 사용
+      const res = await apiFetch(`/api/partners/save`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const result = await res.json();
@@ -141,6 +144,7 @@ export default function Clients() {
     }
   };
 
+  // 행 클릭 (상세 정보 바인딩)
   const onRowClick = (p) => {
     setPartnerCode(p.partnerCode);
     setPartnerName(p.partnerName);
@@ -157,20 +161,19 @@ export default function Clients() {
     setDeliveryFee(p.deliveryFee ? formatComma(p.deliveryFee) : "");
   };
 
+  // 검색/필터 적용
   const filtered = partners
     .filter((p) => (!searchName.trim() ? true : p.partnerName.includes(searchName)))
     .filter((p) => (vatFilter === "ALL" ? true : p.vatYn === vatFilter));
 
+  // 공통 스타일
   const inputStyle = "w-full px-3.5 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all";
   const labelStyle = "block text-[13px] font-semibold text-slate-600 mb-1.5";
 
   return (
-    // 부모 컨테이너에 overflow-x-auto를 주어 화면이 작아지면 가로 스크롤이 생기도록 함
     <div className="min-h-screen bg-slate-50 p-6 md:p-8 overflow-x-auto">
-      {/* 화면 전체 최소 너비 강제 고정 */}
       <div>
-        
-        {/* 헤더 영역 */}
+        {/* 헤더 */}
         <div className="mb-6 flex justify-between items-end">
           <div>
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight">거래처 관리</h1>
@@ -186,7 +189,7 @@ export default function Clients() {
 
         <div className="flex flex-row gap-6 items-start w-full h-full">
           
-          {/* ================= 좌측: 거래처 목록 영역 ================= */}
+          {/* 좌측: 거래처 목록 */}
           <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col h-[780px] overflow-hidden min-w-[600px]">
             {/* 필터 바 */}
             <div className="p-4 border-b border-slate-100 flex gap-3 items-center justify-between bg-white shrink-0">
@@ -258,10 +261,10 @@ export default function Clients() {
             </div>
           </div>
 
-          {/* ================= 우측: 입력 폼 영역 ================= */}
-          {/* 강제로 350px 고정하고 절대 줄어들지 않도록(shrink-0) 설정 */}
+          {/* 우측: 거래처 입력 폼 */}
           <div className="shrink-0 bg-white border border-slate-200 rounded-xl shadow-sm p-5 h-[780px] flex flex-col overflow-y-auto">
             <div className="flex-1 space-y-6">
+              
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -344,6 +347,7 @@ export default function Clients() {
                   <textarea value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="특이사항을 입력하세요" className={`${inputStyle} h-16 resize-none`} />
                 </div>
               </div>
+
             </div>
 
             <div className="mt-6 pt-4 border-t border-slate-100 shrink-0">

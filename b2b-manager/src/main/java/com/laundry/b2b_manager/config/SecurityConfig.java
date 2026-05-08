@@ -1,28 +1,60 @@
-package com.laundry.b2b_manager.config; // 패키지 경로는 본인 프로젝트에 맞게 확인하세요
+package com.laundry.b2b_manager.config;
 
+import com.laundry.b2b_manager.util.JwtFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor // 🚀 JwtFilter 주입을 위해 추가
 public class SecurityConfig {
+
+    private final JwtFilter jwtFilter; // 🚀 우리가 만든 문지기(Filter) 주입
+
+    // 비밀번호 암호화 빈 등록 (서비스에서 쓰기 위함)
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // 1. React 프론트엔드와 통신하기 위해 CSRF 보호 비활성화 (API 서버의 기본 설정)
+            // 1. CSRF 비활성화 (REST API 환경)
             .csrf(csrf -> csrf.disable()) 
             
-            // 2. 폼 로그인 화면 비활성화 (우리는 React에서 자체 로그인 화면을 쓰기 때문)
-            .formLogin(form -> form.disable()) 
+            // 2. CORS 기본 설정 적용
+            .cors(Customizer.withDefaults())
             
-            // 3. 우선 모든 API 요청을 로그인 없이 통과시키도록 설정 (기존과 동일한 환경 유지)
+            // 3. 폼 로그인 및 기본 HTTP 로그인 비활성화
+            .formLogin(form -> form.disable())
+            .httpBasic(basic -> basic.disable())
+            
+            // 4. 🚀 핵심: JWT를 사용하므로 세션을 서버에 저장하지 않음 (STATELESS)
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            
+            // 5. API 접근 권한 설정
             .authorizeHttpRequests(auth -> auth
-                .anyRequest().permitAll()
-            );
+                // 로그인과 회원가입은 누구나 접근 가능 (보안 제외)
+                .requestMatchers("/api/login", "/api/signup", "/api/user/forgot-password").permitAll()
+                
+                // 🚀 그 외의 모든 API(/api/daily, /api/clients 등)는 반드시 인증(토큰) 필요!
+                .anyRequest().authenticated()
+            )
+            
+            // 6. 🚀 UsernamePasswordAuthenticationFilter 실행 전에 JwtFilter를 먼저 실행!
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
             
         return http.build();
     }

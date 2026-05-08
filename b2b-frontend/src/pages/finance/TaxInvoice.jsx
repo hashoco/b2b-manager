@@ -1,10 +1,15 @@
-import React, {  useState, useMemo } from "react";
+"use client";
+
+import React, { useState, useMemo } from "react";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { apiFetch } from "../../utils/api"; // 🚀 공통 API 함수 임포트
 
 const TaxInvoice = () => {
-  // 전월 기본 세팅
+  const companyCode = localStorage.getItem("companyCode");
+
+  // 상태 관리
   const [month, setMonth] = useState(dayjs().subtract(1, "month").format("YYYY-MM"));
   const [list, setList] = useState([]);
   const [vatFilter, setVatFilter] = useState("ALL");
@@ -21,16 +26,15 @@ const TaxInvoice = () => {
     const endDate = dayjs(month).endOf("month").format("YYYY-MM-DD");
 
     try {
-      // TaxInvoice.jsx 의 loadData 함수 내부 수정
-const res = await fetch(`/api/tax/list`, { 
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ startDate, endDate }),
-});
+      // 🚀 기본 fetch 대신 apiFetch 사용 및 companyCode 추가
+      const res = await apiFetch(`/api/tax/list`, { 
+        method: "POST",
+        body: JSON.stringify({ companyCode, startDate, endDate }),
+      });
       const data = await res.json();
 
       if (data.list) {
-        // 숫자 -> 한글 순 정렬 로직
+        // 숫자 시작명 우선 정렬 (한글 오름차순)
         const sorted = data.list.sort((a, b) => {
           const aIsNum = /^[0-9]/.test(a.partnerName);
           const bIsNum = /^[0-9]/.test(b.partnerName);
@@ -39,6 +43,8 @@ const res = await fetch(`/api/tax/list`, {
           return a.partnerName.localeCompare(b.partnerName, "ko");
         });
         setList(sorted);
+      } else {
+        setList([]);
       }
     } catch (error) {
       console.error("조회 중 에러 발생:", error);
@@ -47,15 +53,17 @@ const res = await fetch(`/api/tax/list`, {
     }
   };
 
-  // 부가세 필터링 리스트[cite: 1]
+  // 부가세 필터링
   const filteredList = useMemo(() => {
     return list.filter(row => vatFilter === "ALL" || row.vatYn === vatFilter);
   }, [list, vatFilter]);
 
-  // 엑셀 다운로드 (국세청 양식 맞춤)[cite: 1]
+  // 엑셀 다운로드 (국세청 양식 맞춤)
   const downloadExcel = () => {
     if (filteredList.length === 0) return alert("데이터가 없습니다.");
 
+    // 💡 참고: 향후 '회사 환경설정(CompanyProfile)' API가 개발되면 
+    // 공급자 정보를 하드코딩이 아닌 동적 데이터로 교체해야 합니다.
     const excelData = filteredList.map(row => ({
       "전자(세금계산서) 등록 종류": "01",
       "작성일자": sysdate,
@@ -77,6 +85,7 @@ const res = await fetch(`/api/tax/list`, {
     const ws = XLSX.utils.json_to_sheet(excelData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "세금계산서");
+    
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     saveAs(new Blob([excelBuffer]), `TaxInvoice_${month}.xlsx`);
   };
@@ -125,7 +134,7 @@ const res = await fetch(`/api/tax/list`, {
           </div>
         </div>
 
-        {/* 테이블 테이블 영역 */}
+        {/* 테이블 영역 */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">

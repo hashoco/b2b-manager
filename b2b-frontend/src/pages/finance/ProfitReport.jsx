@@ -4,8 +4,8 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import dayjs from "dayjs";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { apiFetch } from "../../utils/api"; // 🚀 공통 API 함수 임포트
 
-// 🚀 1번 해결: 기본으로 제공될 지출 비용 내역 상수 선언
 const DEFAULT_EXPENSES = [
   { id: 1, name: "월세", amount: 0 },
   { id: 2, name: "가스", amount: 0 },
@@ -20,7 +20,7 @@ const DEFAULT_EXPENSES = [
 ];
 
 const ProfitReport = () => {
-  const companyCode = localStorage.getItem("companyCode") ;
+  const companyCode = localStorage.getItem("companyCode");
   const [viewMonth, setViewMonth] = useState(dayjs().format("YYYY-MM"));
   const reportRef = useRef(null);
 
@@ -32,9 +32,10 @@ const ProfitReport = () => {
   // API 연동 로직
   // ==========================================
 
+  // 1. 시스템 데이터(매출, 인건비) 동기화
   const syncSystemData = async (showMsg = false) => {
     try {
-      const res = await fetch(`/api/profit/sync?companyCode=${companyCode}&month=${viewMonth}`);
+      const res = await apiFetch(`/api/profit/sync?companyCode=${companyCode}&month=${viewMonth}`);
       const data = await res.json();
       if (data.success) {
         setSystemData({ sales: data.sales, labor: data.labor });
@@ -45,9 +46,10 @@ const ProfitReport = () => {
     }
   };
 
+  // 2. 저장된 레포트 데이터 로드
   const loadReportData = async (showMsg = false) => {
     try {
-      const res = await fetch(`/api/profit/read?companyCode=${companyCode}&month=${viewMonth}`);
+      const res = await apiFetch(`/api/profit/read?companyCode=${companyCode}&month=${viewMonth}`);
       const data = await res.json();
 
       if (data.success) {
@@ -66,8 +68,10 @@ const ProfitReport = () => {
 
   useEffect(() => {
     loadReportData(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMonth]);
 
+  // 3. 레포트 데이터 저장
   const handleSaveReport = async () => {
     try {
       const payload = {
@@ -82,9 +86,8 @@ const ProfitReport = () => {
         }))
       };
 
-      const res = await fetch(`/api/profit/save`, {
+      const res = await apiFetch(`/api/profit/save`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
@@ -111,6 +114,7 @@ const ProfitReport = () => {
   const totalExpense = (Number(systemData.labor) || 0) + totalManualExpense;
   const netProfit = (Number(systemData.sales) || 0) - totalExpense;
 
+  // 숫자만 입력 가능하도록 포맷팅
   const updateSystemData = (key, rawValue) => {
     const numericValue = rawValue.replace(/[^0-9]/g, ''); 
     setSystemData(prev => ({ ...prev, [key]: numericValue === '' ? '' : Number(numericValue) }));
@@ -134,21 +138,23 @@ const ProfitReport = () => {
     setManualExpenses([...manualExpenses, { id: newId, name: newCategoryName, amount: "" }]);
     setNewCategoryName("");
   };
-const downloadPDF = async () => {
+
+  // ==========================================
+  // PDF 다운로드 로직
+  // ==========================================
+  const downloadPDF = async () => {
     const element = reportRef.current;
     if (!element) return;
 
-    // 🚀 1. 하단 데이터 잘림 방지: 캡처 직전 스크롤 영역을 완전히 펼침
+    // 스크롤 잘림 방지 (전체 영역 노출)
     const scrollAreas = element.querySelectorAll('.custom-scrollbar');
     const originalStyles = [];
     scrollAreas.forEach(area => {
-      // 나중에 복구하기 위해 원래 스타일 저장
       originalStyles.push({
         el: area,
         maxHeight: area.style.maxHeight,
         overflowY: area.style.overflowY
       });
-      // 제약 해제 (전체 내용 노출)
       area.style.maxHeight = 'none';
       area.style.overflowY = 'visible';
     });
@@ -159,11 +165,10 @@ const downloadPDF = async () => {
         backgroundColor: "#ffffff",
         logging: false,
         useCORS: true,
-        // 스크롤이 펼쳐진 전체 높이를 캔버스가 인식하도록 명시
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight,
         onclone: (clonedDoc) => {
-          // oklch 에러 차단
+          // 1. oklch 색상 에러 차단
           const styles = clonedDoc.querySelectorAll('style');
           styles.forEach(style => {
             if (style.innerHTML.includes('oklch')) {
@@ -175,17 +180,16 @@ const downloadPDF = async () => {
           if (reportElement) {
             reportElement.style.backgroundColor = "#ffffff";
 
-            // 🚀 2. 금액 증발 방지: 캡처 시 input 태그를 span으로 변환하여 글씨 강제 고정
+            // 2. input 태그 -> span 강제 변환 (글씨 깨짐 방지)
             const inputs = reportElement.querySelectorAll('input');
             inputs.forEach(input => {
               const span = clonedDoc.createElement('span');
               span.innerText = input.value || input.placeholder || '0';
               span.className = input.className;
               
-              // 인풋 값의 폰트 색상 명시적 주입
               let fontColor = '#1e293b'; 
-              if (input.classList.contains('text-blue-600')) fontColor = '#2563eb'; // 매출 금액
-              if (input.classList.contains('text-rose-600')) fontColor = '#e11d48'; // 인건비 금액
+              if (input.classList.contains('text-blue-600')) fontColor = '#2563eb'; 
+              if (input.classList.contains('text-rose-600')) fontColor = '#e11d48'; 
               
               span.style.color = fontColor;
               span.style.display = 'inline-block';
@@ -194,33 +198,24 @@ const downloadPDF = async () => {
               input.parentNode.replaceChild(span, input);
             });
 
-            // 🚀 3. 라벨 폰트 색상 강제 주입
+            // 3. 주요 라벨 폰트 색상 명시적 주입
             const allElements = reportElement.querySelectorAll('*');
             allElements.forEach(el => {
               const computed = window.getComputedStyle(el);
-              
               if (el.classList.contains('bg-slate-800')) {
                 el.style.backgroundColor = '#1e293b';
                 el.style.color = '#ffffff';
-              }
-              else if (el.classList.contains('text-blue-500') || el.classList.contains('text-blue-700')) {
+              } else if (el.classList.contains('text-blue-500') || el.classList.contains('text-blue-700')) {
                 el.style.color = '#3b82f6';
-              }
-              else if (el.classList.contains('text-rose-500') || el.classList.contains('text-rose-700') || el.classList.contains('text-red-500')) {
+              } else if (el.classList.contains('text-rose-500') || el.classList.contains('text-rose-700') || el.classList.contains('text-red-500')) {
                 el.style.color = '#ef4444';
-              }
-              else if (el.classList.contains('text-emerald-500') || el.classList.contains('text-emerald-600')) {
+              } else if (el.classList.contains('text-emerald-500') || el.classList.contains('text-emerald-600')) {
                 el.style.color = '#10b981';
-              }
-              // 라벨 폰트 (매출총액, 인건비총액, 내역 텍스트 등) 명시적 보존
-              else if (el.classList.contains('text-slate-700')) {
+              } else if (el.classList.contains('text-slate-700')) {
                 el.style.color = '#334155';
-              }
-              else if (el.classList.contains('text-slate-800') || el.classList.contains('text-slate-900')) {
+              } else if (el.classList.contains('text-slate-800') || el.classList.contains('text-slate-900')) {
                 el.style.color = '#1e293b';
-              }
-              // 기본 텍스트 보호
-              else if (computed.color.includes('oklch') || computed.color === 'rgba(0, 0, 0, 0)') {
+              } else if (computed.color.includes('oklch') || computed.color === 'rgba(0, 0, 0, 0)') {
                 el.style.color = '#1e293b';
               }
             });
@@ -231,7 +226,6 @@ const downloadPDF = async () => {
       const imgData = canvas.toDataURL("image/png", 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      // 확장된 캔버스 높이 비율을 그대로 적용하여 한 페이지에 모두 담거나 페이지를 늘림
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
@@ -241,7 +235,7 @@ const downloadPDF = async () => {
       console.error("PDF 생성 오류", error);
       alert("PDF 생성 중 오류가 발생했습니다.");
     } finally {
-      // 🚀 4. 캡처 완료 후 화면 스크롤 원래대로 원상 복구
+      // 캡처 완료 후 화면 스크롤 원상 복구
       originalStyles.forEach(({ el, maxHeight, overflowY }) => {
         el.style.maxHeight = maxHeight;
         el.style.overflowY = overflowY;
@@ -252,7 +246,6 @@ const downloadPDF = async () => {
   return (
     <div className="w-full min-h-screen bg-slate-50 p-6 flex flex-col items-center overflow-auto custom-scrollbar">
       
-      {/* 🚀 oklch 에러 원천 차단을 위한 CSS 스타일 주입 */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           .pdf-content-area {
@@ -262,7 +255,6 @@ const downloadPDF = async () => {
             --b1: #ffffff !important;
           }
         }
-        /* html2canvas 호환성을 위해 전역 oklch 변수 일부를 hex로 대체 */
         :root {
           --p-hex: #3b82f6;
           --s-hex: #64748b;
@@ -296,8 +288,8 @@ const downloadPDF = async () => {
         </div>
       </div>
 
-      {/* PDF 캡처 영역 (클래스명 pdf-content-area 추가) */}
-      <div ref={reportRef} className="pdf-content-area w-full  bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col p-8 shrink-0">
+      {/* PDF 캡처 영역 */}
+      <div ref={reportRef} className="pdf-content-area w-full bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col p-8 shrink-0">
         
         <div className="flex flex-col items-center mb-6 border-b-2 border-slate-800 pb-4">
           <h2 className="text-2xl font-black text-slate-900 tracking-tight">{dayjs(viewMonth).format("YYYY년 MM월")} 영업 손익 레포트</h2>
@@ -416,4 +408,3 @@ const downloadPDF = async () => {
 };
 
 export default ProfitReport;
-

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { apiFetch } from '../../utils/api'; // 🚀 공통 API 함수 임포트
 
 const DailyWork = () => {
   const [partners, setPartners] = useState([]);
@@ -10,20 +11,19 @@ const DailyWork = () => {
   const [loading, setLoading] = useState(false);
   const companyCode = localStorage.getItem("companyCode");
 
-  // 1. 거래처 데이터 로드
+  // 거래처 목록 조회
   useEffect(() => {
-    fetch(`/api/partners/list?companyCode=${companyCode}`)
+    apiFetch(`/api/partners/list?companyCode=${companyCode}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          const active = data.partners.filter(p => p.useYn === 'Y');
-          setPartners(active);
+          setPartners(data.partners.filter(p => p.useYn === 'Y'));
         }
       })
-      .catch(err => console.error("데이터 로드 실패:", err));
+      .catch(err => console.error("거래처 로드 실패:", err));
   }, [companyCode]);
 
-  // 2. 날짜 생성 및 데이터 매핑
+  // 선택 월의 일자 배열 생성 및 데이터 조회 트리거
   useEffect(() => {
     if (partners.length > 0) {
       const [year, month] = yearMonth.split('-').map(Number);
@@ -34,12 +34,14 @@ const DailyWork = () => {
       setDays(dateList);
       loadMonthData(dateList);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yearMonth, partners]);
 
+  // 월간 배송 데이터 조회 및 그리드 셀 매핑
   const loadMonthData = async (dateList) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/daily/list-month?companyCode=${companyCode}&yearMonth=${yearMonth}`);
+      const res = await apiFetch(`/api/daily/list-month?companyCode=${companyCode}&yearMonth=${yearMonth}`);
       const data = await res.json();
 
       const map = new Map();
@@ -61,15 +63,18 @@ const DailyWork = () => {
     }
   };
 
+  // 셀 입력값 업데이트 (최대 6자리 숫자 제한)
   const updateCell = (partnerId, workDate, val) => {
     let onlyNumberStr = val.replace(/[^\d]/g, "");
     if (onlyNumberStr.length > 6) onlyNumberStr = onlyNumberStr.slice(0, 6);
     const qty = parseInt(onlyNumberStr) || 0;
+    
     setCells(prev => prev.map(c =>
       (c.partnerId === partnerId && c.workDate === workDate) ? { ...c, qty } : c
     ));
   };
 
+  // 방향키 이동 로직
   const handleArrowKey = (e, day, pId) => {
     const rIdx = days.indexOf(day);
     const cIdx = partners.findIndex(p => p.id === pId);
@@ -85,11 +90,11 @@ const DailyWork = () => {
     document.getElementById(`cell-${days[nR]}-${partners[nC].id}`)?.focus();
   };
 
+  // 전체 데이터 저장
   const saveAll = async () => {
     try {
-      const res = await fetch(`/api/daily/save-month`, {
+      const res = await apiFetch(`/api/daily/save-month`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companyCode, rows: cells })
       });
       const result = await res.json();
@@ -99,16 +104,15 @@ const DailyWork = () => {
     }
   };
 
+  // 총 누적 건수 및 금액 계산
   const grandTotal = useMemo(() => cells.reduce((sum, c) => sum + (c.qty || 0), 0), [cells]);
-
 
   const getPartnerAmount = (p) => {
     const storeType = (p.storeType || p.store_type || "").trim().toUpperCase();
     const expectedAmount = p.expectedAmount || p.expected_amount || 0;
-    const vatYn = (p.vatYn || p.vat_yn || "Y").trim().toUpperCase(); // 부가세 여부 확인
+    const vatYn = (p.vatYn || p.vat_yn || "Y").trim().toUpperCase();
 
     let amount = 0;
-
     if (storeType === "MONTH" || storeType === "월별") {
       amount = expectedAmount;
     } else {
@@ -116,35 +120,31 @@ const DailyWork = () => {
       amount = sumQty * expectedAmount;
     }
 
-    // ✅ 부가세 여부가 'Y'이면 10% 가산 (소수점 절사)
-    if (vatYn === 'Y') {
-      amount = Math.floor(amount * 1.1);
-    }
-
+    if (vatYn === 'Y') amount = Math.floor(amount * 1.1); // 부가세 10% 가산
     return amount;
   };
+
   const grandTotalAmount = useMemo(() => {
     return partners.reduce((acc, p) => acc + getPartnerAmount(p), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partners, cells]);
 
+  // 그리드 헤더 디자인 설정
   const getCategoryInlineStyle = (p) => {
     const storeType = (p.storeType || p.store_type || "").trim().toUpperCase();
     const vatYn = (p.vatYn || p.vat_yn || "Y").trim().toUpperCase();
 
-    let baseStyle = {};
     if (storeType === 'BAG' || storeType === '마대') {
-      baseStyle = vatYn === 'Y'
+      return vatYn === 'Y'
         ? { backgroundColor: '#dbeafe', color: '#1e3a8a', borderColor: '#bfdbfe' }
         : { backgroundColor: '#dcfce7', color: '#14532d', borderColor: '#bbf7d0' };
-    } else if (storeType === 'MONTH' || storeType === '월별') {
-      baseStyle = vatYn === 'Y'
+    } 
+    if (storeType === 'MONTH' || storeType === '월별') {
+      return vatYn === 'Y'
         ? { backgroundColor: '#fee2e2', color: '#7f1d1d', borderColor: '#fecaca' }
         : { backgroundColor: '#ffedd5', color: '#7c2d12', borderColor: '#fed7aa' };
-    } else {
-      baseStyle = { backgroundColor: '#f1f5f9', color: '#1e293b', borderColor: '#e2e8f0' };
     }
-
-    return baseStyle;
+    return { backgroundColor: '#f1f5f9', color: '#1e293b', borderColor: '#e2e8f0' };
   };
 
   return (
@@ -162,6 +162,7 @@ const DailyWork = () => {
             </div>
 
             <div className="hidden sm:block w-px h-10 bg-slate-200"></div>
+            
             <div className="flex flex-col items-center sm:items-start">
               <div className="flex items-baseline gap-1">
                 <span className="text-3xl font-black text-slate-900 tracking-tighter">
@@ -187,15 +188,15 @@ const DailyWork = () => {
               onClick={saveAll}
               className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-2.5 rounded-xl shadow-md font-bold text-sm transition-all active:scale-95 flex items-center gap-2"
             >
-              전체 저장
+              일괄 저장
             </button>
           </div>
         </div>
 
-        {/* 하단 메인 테이블 컨테이너 */}
+        {/* 메인 데이터 그리드 */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm w-full grid grid-rows-[auto_1fr] overflow-hidden min-h-0 min-w-0">
 
-          {/* 범례 */}
+          {/* 분류 색상 범례 */}
           <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-end gap-3 w-full z-30">
             <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest mr-2">매장구분</span>
             <span className="px-2.5 py-1 rounded-md text-[10px] font-black border" style={{ backgroundColor: '#dbeafe', color: '#1e3a8a', borderColor: '#bfdbfe' }}>마대+Y</span>
@@ -206,7 +207,6 @@ const DailyWork = () => {
 
           <div className="overflow-auto w-full h-full bg-white custom-scrollbar">
             <table className="w-max table-fixed border-separate border-spacing-0 text-sm">
-
               <colgroup>
                 <col style={{ width: '100px' }} />
                 {partners.map(p => (
@@ -217,45 +217,36 @@ const DailyWork = () => {
 
               <thead>
                 <tr>
-
-                  {/* 좌측 고정 (DATE) */}
+                  {/* DATE 컬럼 (좌측 상단 고정) */}
                   <th className="p-0 m-0 border-0 sticky top-0 left-0 bg-slate-800 text-white border-b border-r border-slate-700" style={{ zIndex: 70, width: '100px', minWidth: '100px', maxWidth: '100px', height: '64px', minHeight: '64px', maxHeight: '64px' }}>
                     <div className="flex items-center justify-center font-bold text-[12px] tracking-widest uppercase box-border overflow-hidden">Date</div>
                   </th>
 
-                  {/* 중앙 거래처 & 금액 */}
+                  {/* 거래처 헤더 반복 */}
                   {partners.map(p => {
                     const amount = getPartnerAmount(p);
                     return (
                       <th key={`name-${p.id}`} className="p-0 m-0 border-0 sticky top-0 bg-white" style={{ zIndex: 60, width: '100px', minWidth: '100px', maxWidth: '100px', height: '64px', minHeight: '64px', maxHeight: '64px' }}>
-
                         <div className="flex flex-col m-0 p-0 box-border overflow-hidden">
-
-                          {/* 위층: 거래처명 */}
                           <div className="flex items-center justify-center px-1 border-b border-r box-border overflow-hidden" style={{ ...getCategoryInlineStyle(p), minHeight: '32px', maxHeight: '32px' }}>
-                            {/* 🚀 핵심: 빈 값이어도 공간을 차지하도록 \u00A0 추가, min-w-0 으로 truncate 무조건 발동 */}
                             <span className="block w-full min-w-0 truncate font-black text-[12px] text-center" title={p.partnerName}>
                               {p.partnerName || "\u00A0"}
                             </span>
                           </div>
-
-                          {/* 아래층: 정산 금액 */}
                           <div className="flex items-center justify-center px-1 bg-slate-50 border-b border-r border-slate-200 box-border overflow-hidden" style={{ minHeight: '32px', maxHeight: '32px' }}>
                             <span className="block w-full min-w-0 truncate text-[11px] font-bold text-slate-600 text-center tracking-tighter">
                               {amount !== undefined && amount !== null ? `${amount.toLocaleString()}원` : "\u00A0"}
                             </span>
                           </div>
-
                         </div>
                       </th>
                     );
                   })}
 
-                  {/* 우측 고정 (DAILY) */}
+                  {/* DAILY 합계 컬럼 (우측 상단 고정) */}
                   <th className="p-0 m-0 border-0 sticky top-0 right-0 bg-slate-800 text-white border-b border-l border-slate-700" style={{ zIndex: 70, width: '100px', minWidth: '100px', maxWidth: '100px', height: '64px', minHeight: '64px', maxHeight: '64px' }}>
                     <div className="flex items-center justify-center font-bold text-[12px] tracking-widest uppercase box-border overflow-hidden">Daily</div>
                   </th>
-
                 </tr>
               </thead>
 
@@ -272,7 +263,8 @@ const DailyWork = () => {
 
                   return (
                     <tr key={day} className={`transition-colors hover:bg-slate-50`}>
-
+                      
+                      {/* 좌측 날짜 고정 셀 */}
                       <td className={`p-0 sticky left-0 border-b border-r border-slate-200 ${rowBg}`} style={{ zIndex: 30, width: '100px', minWidth: '100px', maxWidth: '100px', height: '44px', padding: 0 }}>
                         <div className="flex flex-col items-center justify-center box-border overflow-hidden">
                           <span className={`text-[13px] font-black ${dateColor}`}>
@@ -284,6 +276,7 @@ const DailyWork = () => {
                         </div>
                       </td>
 
+                      {/* 중앙 입력 셀 반복 */}
                       {partners.map(p => {
                         const cell = cells.find(c => c.partnerId === p.id && c.workDate === day);
                         return (
@@ -303,6 +296,7 @@ const DailyWork = () => {
                         );
                       })}
 
+                      {/* 우측 일일 합계 고정 셀 */}
                       <td className={`p-0 sticky right-0 border-b border-l border-slate-200 bg-slate-50`} style={{ zIndex: 30, width: '100px', minWidth: '100px', maxWidth: '100px', height: '44px', padding: 0 }}>
                         <div className="flex items-center justify-center font-black text-slate-800 text-[14px] box-border overflow-hidden">
                           {dailyTotal > 0 ? dailyTotal.toLocaleString() : "-"}
