@@ -1,5 +1,6 @@
 package com.laundry.b2b_manager.service.work;
 
+import com.laundry.b2b_manager.entity.partners.ClientCompany;
 import com.laundry.b2b_manager.entity.work.DailyWork;
 import com.laundry.b2b_manager.repository.work.DailyWorkRepository;
 
@@ -53,4 +54,9 @@ public class DailyWorkService {
         // 반복문 안에서 매번 save() 하지 않고, 모아서 한 번에 saveAll() 처리하여 성능 최적화
         repository.saveAll(worksToSave);
     }
+
+    public List<ClientCompany> getSortedPartners(String companyCode) {
+        return repository.findAllActivePartnersSorted(companyCode);
+    }
+
 }

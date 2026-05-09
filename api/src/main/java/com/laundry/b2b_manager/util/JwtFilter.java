@@ -42,7 +42,6 @@ public class JwtFilter extends OncePerRequestFilter {
             token = authorizationHeader.substring(7); 
             try {
                 userId = jwtUtil.extractAllClaims(token).getSubject();
-                System.out.println("[JwtFilter] ✅ 토큰 추출 성공 userId: " + userId);
             } catch (Exception e) {
                 System.out.println("[JwtFilter] ❌ 토큰 추출 실패: " + e.getMessage());
             }

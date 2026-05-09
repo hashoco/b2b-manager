@@ -10,6 +10,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+// 🚀 날짜 포맷팅을 위한 패키지 임포트 추가
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -22,11 +25,39 @@ public class AdminUserService {
     private final EmailService emailService; // EmailService 주입
     private final AdminUserRepository adminUserRepository;
     
-    // 🚀 별도의 설정 파일 없이 서비스 내에서 바로 암호화 객체 생성
+    // 별도의 설정 파일 없이 서비스 내에서 바로 암호화 객체 생성
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     // 비밀번호 복잡도 정규식
     private static final String PASSWORD_PATTERN = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#])[A-Za-z\\d@$!%*?&#]{8,}$";
+
+    // ==========================================
+    // 🚀 신규 추가: 회사 코드 순차 발급 로직 (CYYMM-001 형식)
+    // ==========================================
+    private String generateCompanyCode() {
+        // 1. 오늘 날짜를 기준으로 "C + YYMM + -" 형태의 접두사 만들기 (예: C2405-)
+        String yymm = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM"));
+        String prefix = "C" + yymm + "-";
+
+        // 2. 해당 접두사로 시작하는 가장 마지막 회사 찾기
+        Optional<AdminUser> lastUser = adminUserRepository.findTopByCompanyCodeStartingWithOrderByCompanyCodeDesc(prefix);
+
+        // 3. 만약 이번 달에 가입한 회사가 한 명도 없다면, 001번 부여
+        if (lastUser.isEmpty() || lastUser.get().getCompanyCode() == null) {
+            return prefix + "001";
+        }
+
+        // 4. 이번 달 가입자가 있다면, 마지막 번호에서 숫자만 추출해 +1 하기
+        String lastCode = lastUser.get().getCompanyCode(); 
+        try {
+            String[] parts = lastCode.split("-");
+            int nextNumber = Integer.parseInt(parts[1]) + 1;
+            return prefix + String.format("%03d", nextNumber);
+        } catch (Exception e) {
+            // 혹시 데이터 파싱에 실패할 경우 안전망
+            return prefix + "999"; 
+        }
+    }
 
     // ==========================================
     // 1. 로그인 인증
@@ -71,7 +102,7 @@ public class AdminUserService {
     }
 
     // ==========================================
-    // 3. 🚀 신규 추가: 회원가입 (DTO 없이 Map 사용)
+    // 3. 회원가입 (DTO 없이 Map 사용)
     // ==========================================
     @Transactional
     public Map<String, Object> signUp(Map<String, String> payload) {
@@ -80,7 +111,7 @@ public class AdminUserService {
         String userId = payload.get("userId");
         String password = payload.get("password");
         String username = payload.get("username");
-        String companyName = payload.get("companyName");
+        // String companyName = payload.get("companyName"); // 필요시 엔티티에 추가 후 사용
 
         // 1. 아이디(이메일) 중복 체크
         if (adminUserRepository.findByUserId(userId).isPresent()) {
@@ -89,20 +120,17 @@ public class AdminUserService {
             return result;
         }
 
-        // 2. 새로운 회사 코드(companyCode) 생성 (예: C-무작위8자리)
-        String newCompanyCode = "C-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-
-        /* 💡 참고: 나중에 CompanyProfile 엔티티와 레포지토리를 만드시면 
-           여기에 companyName과 newCompanyCode를 저장하는 코드를 한 줄 추가하시면 됩니다! */
+        // 2. 🚀 무작위 UUID 대신 위에서 만든 순차 번호 발급 메서드 사용
+        String newCompanyCode = generateCompanyCode();
 
         // 3. 관리자 계정 생성 및 비밀번호 암호화 저장
         AdminUser newUser = AdminUser.builder()
                 .userId(userId)
-                .password(passwordEncoder.encode(password)) // 🚀 핵심: 프론트에서 넘어온 비밀번호 암호화
+                .password(passwordEncoder.encode(password)) // 프론트에서 넘어온 비밀번호 암호화
                 .username(username)
-                .companyCode(newCompanyCode) // 부여된 회사 코드 저장
-                .role("ROLE_DEFAULT")          // 기본 권한
-                .isFirstLogin("")           // 본인이 직접 가입했으므로 최초 변경은 건너뜀
+                .companyCode(newCompanyCode) // 부여된 순차 회사 코드 저장
+                .role("ROLE_DEFAULT")        // 기본 권한
+                .isFirstLogin("N")           // 본인이 직접 가입했으므로 최초 변경은 건너뜀 ('N'으로 명시적 세팅 추천)
                 .build();
 
         adminUserRepository.save(newUser);
@@ -113,38 +141,45 @@ public class AdminUserService {
         return result;
     }
 
+    // ==========================================
+    // 4. 비밀번호 초기화 (임시 비밀번호 발급)
+    // ==========================================
     @Transactional
-public Map<String, Object> resetPassword(String userId) {
-    Map<String, Object> result = new HashMap<>();
-    
-    Optional<AdminUser> userOpt = adminUserRepository.findByUserId(userId);
-    if (userOpt.isEmpty()) {
-        result.put("success", false);
-        result.put("message", "해당 이메일로 가입된 계정이 없습니다.");
+    public Map<String, Object> resetPassword(String userId) {
+        Map<String, Object> result = new HashMap<>();
+        
+        Optional<AdminUser> userOpt = adminUserRepository.findByUserId(userId);
+        if (userOpt.isEmpty()) {
+            result.put("success", false);
+            result.put("message", "해당 이메일로 가입된 계정이 없습니다.");
+            return result;
+        }
+
+        // 1. 8자리 임시 비밀번호 생성 (영문+숫자)
+        String tempPassword = UUID.randomUUID().toString().substring(0, 8);
+
+        // 2. DB 업데이트 (암호화 저장 + 최초 로그인 상태로 복구)
+        AdminUser user = userOpt.get();
+        user.setPassword(passwordEncoder.encode(tempPassword));
+        user.setIsFirstLogin("Y"); // 임시 비밀번호이므로 로그인 시 강제 변경 유도
+        adminUserRepository.save(user);
+
+        // 3. 이메일 발송
+        String mailBody = String.format(
+                "안녕하세요, WashBiz입니다.\n\n귀하의 임시 비밀번호는 [%s] 입니다.\n로그인 후 반드시 비밀번호를 변경해 주세요.", 
+                tempPassword);
+        
+        emailService.sendMail(userId, "[WashBiz] 임시 비밀번호 발급 안내", mailBody);
+
+        result.put("success", true);
+        result.put("message", "이메일로 임시 비밀번호가 발송되었습니다.");
         return result;
     }
 
-    // 1. 8자리 임시 비밀번호 생성 (영문+숫자)
-    String tempPassword = UUID.randomUUID().toString().substring(0, 8);
-
-    // 2. DB 업데이트 (암호화 저장 + 최초 로그인 상태로 복구)
-    AdminUser user = userOpt.get();
-    user.setPassword(passwordEncoder.encode(tempPassword));
-    user.setIsFirstLogin("Y"); // 임시 비밀번호이므로 로그인 시 강제 변경 유도
-    adminUserRepository.save(user);
-
-    // 3. 이메일 발송
-    String mailBody = String.format(
-            "안녕하세요,  WashBiz입니다.\n\n귀하의 임시 비밀번호는 [%s] 입니다.\n로그인 후 반드시 비밀번호를 변경해 주세요.", 
-            tempPassword);
-    
-    emailService.sendMail(userId, "[WashBiz] 임시 비밀번호 발급 안내", mailBody);
-
-    result.put("success", true);
-    result.put("message", "이메일로 임시 비밀번호가 발송되었습니다.");
-    return result;
-}
-@Transactional
+    // ==========================================
+    // 5. 초기 비밀번호 강제 변경
+    // ==========================================
+    @Transactional
     public Map<String, Object> changeInitialPassword(String userId, String newPassword) {
         Map<String, Object> result = new HashMap<>();
         
@@ -161,7 +196,7 @@ public Map<String, Object> resetPassword(String userId) {
         // 2. 새 비밀번호 암호화 및 덮어쓰기
         user.setPassword(passwordEncoder.encode(newPassword));
         
-        // 3. 🚀 가장 중요: 이제 최초 로그인이 아니므로 'N'으로 변경!
+        // 3. 이제 최초 로그인이 아니므로 'N'으로 변경
         user.setIsFirstLogin("N");
         
         adminUserRepository.save(user);
@@ -171,5 +206,4 @@ public Map<String, Object> resetPassword(String userId) {
         
         return result;
     }
-
 }

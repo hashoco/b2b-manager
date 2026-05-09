@@ -1,6 +1,7 @@
 package com.laundry.b2b_manager.repository.partners;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import com.laundry.b2b_manager.entity.partners.ClientCompany;
 
@@ -17,4 +18,6 @@ public interface ClientCompanyRepository extends JpaRepository<ClientCompany, Lo
     
     // 🔵 3. 신규 코드 발급을 위해, 내 법인에 속한 가장 최근 거래처 1개 찾기
     ClientCompany findTopByCompanyCodeOrderByIdDesc(String companyCode);
+
+
 }

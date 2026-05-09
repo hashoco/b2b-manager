@@ -1,8 +1,11 @@
 package com.laundry.b2b_manager.controller.work;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.laundry.b2b_manager.entity.partners.ClientCompany;
 import com.laundry.b2b_manager.service.work.DailyWorkService;
 
 import java.util.HashMap;
@@ -48,5 +51,21 @@ public class DailyWorkController {
             res.put("message", "저장 중 오류가 발생했습니다: " + e.getMessage());
         }
         return res;
+    }
+
+    @GetMapping("/list")
+    public ResponseEntity<?> getPartnersList(@RequestParam String companyCode) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            List<ClientCompany> partners = dailyWorkService.getSortedPartners(companyCode);
+            
+            response.put("success", true);
+            response.put("partners", partners);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "거래처 목록 조회 중 오류 발생");
+            return ResponseEntity.internalServerError().body(response);
+        }
     }
 }

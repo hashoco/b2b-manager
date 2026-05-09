@@ -25,6 +25,7 @@ export default function Clients() {
   // 검색 및 필터 상태
   const [searchName, setSearchName] = useState("");
   const [vatFilter, setVatFilter] = useState("ALL");
+  const [useYnFilter, setUseYnFilter] = useState("Y"); // 🚀 사용여부 필터 상태 (기본값 Y)
 
   // 목록 조회
   const loadPartners = async () => {
@@ -32,12 +33,10 @@ export default function Clients() {
     setLoading(true);
     
     try {
-      // 🚀 기본 fetch 대신 apiFetch 사용 (토큰 자동 포함)
-      const res = await apiFetch(`/api/partners/list?companyCode=${companyCode}`);
+      const res = await apiFetch(`/api/daily/list?companyCode=${companyCode}`);
       const data = await res.json();
       
       if (data.success && data.partners) {
-        // 숫자 시작명 우선 정렬
         const sorted = data.partners.sort((a, b) => {
           const aIsNum = /^[0-9]/.test(a.partnerName);
           const bIsNum = /^[0-9]/.test(b.partnerName);
@@ -59,6 +58,24 @@ export default function Clients() {
   useEffect(() => {
     loadPartners();
   }, []);
+
+  // 🚀 연락처 포맷팅 (000-0000-0000)
+  const formatPhoneNumber = (value) => {
+    if (!value) return "";
+    const val = value.replace(/[^0-9]/g, "");
+    if (val.length < 4) return val;
+    if (val.length < 8) return `${val.substring(0, 3)}-${val.substring(3)}`;
+    return `${val.substring(0, 3)}-${val.substring(3, 7)}-${val.substring(7, 11)}`;
+  };
+
+  // 🚀 사업자번호 포맷팅 (000-00-00000)
+  const formatBizNumber = (value) => {
+    if (!value) return "";
+    const val = value.replace(/[^0-9]/g, "");
+    if (val.length < 4) return val;
+    if (val.length < 6) return `${val.substring(0, 3)}-${val.substring(3)}`;
+    return `${val.substring(0, 3)}-${val.substring(3, 5)}-${val.substring(5, 10)}`;
+  };
 
   // 금액 포맷 (콤마 처리)
   const formatComma = (value) => {
@@ -124,7 +141,6 @@ export default function Clients() {
     };
 
     try {
-      // 🚀 기본 fetch 대신 apiFetch 사용
       const res = await apiFetch(`/api/partners/save`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -148,11 +164,11 @@ export default function Clients() {
   const onRowClick = (p) => {
     setPartnerCode(p.partnerCode);
     setPartnerName(p.partnerName);
-    setBizRegNo(p.bizRegNo ?? "");
+    setBizRegNo(formatBizNumber(p.bizRegNo ?? "")); // 🚀 바인딩 시에도 포맷 유지
     setOwnerName(p.ownerName ?? "");
     setVatYn(p.vatYn ?? "Y");
     setPayerName(p.payerName ?? "");
-    setPhone(p.phone ?? "");
+    setPhone(formatPhoneNumber(p.phone ?? "")); // 🚀 바인딩 시에도 포맷 유지
     setAddress(p.address ?? "");
     setRemark(p.remark ?? "");
     setStoreType(p.storeType ?? "BAG");
@@ -161,10 +177,11 @@ export default function Clients() {
     setDeliveryFee(p.deliveryFee ? formatComma(p.deliveryFee) : "");
   };
 
-  // 검색/필터 적용
+  // 🚀 검색/필터 적용 (사용여부 필터 추가)
   const filtered = partners
     .filter((p) => (!searchName.trim() ? true : p.partnerName.includes(searchName)))
-    .filter((p) => (vatFilter === "ALL" ? true : p.vatYn === vatFilter));
+    .filter((p) => (vatFilter === "ALL" ? true : p.vatYn === vatFilter))
+    .filter((p) => (useYnFilter === "ALL" ? true : p.useYn === useYnFilter));
 
   // 공통 스타일
   const inputStyle = "w-full px-3.5 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all";
@@ -198,17 +215,34 @@ export default function Clients() {
                 placeholder="거래처명 검색"
                 className="px-3 py-2 border border-slate-200 rounded-lg text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
-              <div className="flex items-center gap-3 text-sm bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                <span className="font-semibold text-slate-600 mr-1">부가세</span>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="radio" name="vat" value="ALL" checked={vatFilter === "ALL"} onChange={(e) => setVatFilter(e.target.value)} className="accent-blue-600" /> 전체
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="radio" name="vat" value="Y" checked={vatFilter === "Y"} onChange={(e) => setVatFilter(e.target.value)} className="accent-blue-600" /> Y
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="radio" name="vat" value="N" checked={vatFilter === "N"} onChange={(e) => setVatFilter(e.target.value)} className="accent-blue-600" /> N
-                </label>
+              <div className="flex gap-4">
+                {/* 🚀 부가세 필터 */}
+                <div className="flex items-center gap-3 text-sm bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                  <span className="font-semibold text-slate-600 mr-1">부가세</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="vat" value="ALL" checked={vatFilter === "ALL"} onChange={(e) => setVatFilter(e.target.value)} className="accent-blue-600" /> 전체
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="vat" value="Y" checked={vatFilter === "Y"} onChange={(e) => setVatFilter(e.target.value)} className="accent-blue-600" /> Y
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="vat" value="N" checked={vatFilter === "N"} onChange={(e) => setVatFilter(e.target.value)} className="accent-blue-600" /> N
+                  </label>
+                </div>
+
+                {/* 🚀 사용여부 필터 추가 */}
+                <div className="flex items-center gap-3 text-sm bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                  <span className="font-semibold text-slate-600 mr-1">사용여부</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="useYnFilter" value="ALL" checked={useYnFilter === "ALL"} onChange={(e) => setUseYnFilter(e.target.value)} className="accent-blue-600" /> 전체
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="useYnFilter" value="Y" checked={useYnFilter === "Y"} onChange={(e) => setUseYnFilter(e.target.value)} className="accent-blue-600" /> Y
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="useYnFilter" value="N" checked={useYnFilter === "N"} onChange={(e) => setUseYnFilter(e.target.value)} className="accent-blue-600" /> N
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -217,8 +251,8 @@ export default function Clients() {
               <table className="w-full text-sm text-left whitespace-nowrap">
                 <thead className="bg-slate-50 text-slate-500 font-semibold sticky top-0 border-b border-slate-200 z-10 shadow-sm">
                   <tr>
-                    <th className="p-3 pl-4">코드</th>
-                    <th className="p-3">거래처명</th>
+                    {/* 🚀 테이블 헤더: 코드 열 제거됨 */}
+                    <th className="p-3 pl-4">거래처명</th>
                     <th className="p-3">사업자번호</th>
                     <th className="p-3">매장구분</th>
                     <th className="p-3 text-center">부가세</th>
@@ -228,10 +262,10 @@ export default function Clients() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {loading && (
-                    <tr><td colSpan="7" className="p-4 text-center text-slate-400">데이터를 불러오는 중입니다...</td></tr>
+                    <tr><td colSpan="6" className="p-4 text-center text-slate-400">데이터를 불러오는 중입니다...</td></tr>
                   )}
                   {!loading && filtered.length === 0 && (
-                    <tr><td colSpan="7" className="p-4 text-center text-slate-400">조회된 거래처가 없습니다.</td></tr>
+                    <tr><td colSpan="6" className="p-4 text-center text-slate-400">조회된 거래처가 없습니다.</td></tr>
                   )}
                   {filtered.map((p) => (
                     <tr
@@ -239,8 +273,8 @@ export default function Clients() {
                       onClick={() => onRowClick(p)}
                       className="hover:bg-blue-50/50 cursor-pointer transition-colors text-slate-700"
                     >
-                      <td className="p-3 pl-4 font-medium text-slate-900">{p.partnerCode}</td>
-                      <td className="p-3">{p.partnerName}</td>
+                      {/* 🚀 테이블 행: 코드 열 제거됨 */}
+                      <td className="p-3 pl-4 font-medium text-slate-900">{p.partnerName}</td>
                       <td className="p-3 text-slate-500">{p.bizRegNo || "-"}</td>
                       <td className="p-3">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${p.storeType === "BAG" ? "bg-slate-100 text-slate-600" : "bg-blue-100 text-blue-700"}`}>
@@ -270,7 +304,7 @@ export default function Clients() {
                   <div>
                     <label className={labelStyle}>매장 구분</label>
                     <select value={storeType} onChange={(e) => setStoreType(e.target.value)} className={inputStyle}>
-                      <option value="BAG">마대</option>
+                      <option value="BAG">건별(마대</option>
                       <option value="MONTH">월별</option>
                     </select>
                   </div>
@@ -294,12 +328,26 @@ export default function Clients() {
                   </div>
                   <div>
                     <label className={labelStyle}>사업자번호</label>
-                    <input value={bizRegNo} onChange={(e) => setBizRegNo(e.target.value)} className={inputStyle} />
+                    {/* 🚀 maxLength 속성과 자동 포맷팅 함수 적용 */}
+                    <input 
+                      value={bizRegNo} 
+                      onChange={(e) => setBizRegNo(formatBizNumber(e.target.value))} 
+                      placeholder="000-00-00000" 
+                      maxLength={12}
+                      className={inputStyle} 
+                    />
                   </div>
                 </div>
                 <div>
                   <label className={labelStyle}>연락처</label>
-                  <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="010-0000-0000" className={inputStyle} />
+                  {/* 🚀 maxLength 속성과 자동 포맷팅 함수 적용 */}
+                  <input 
+                    value={phone} 
+                    onChange={(e) => setPhone(formatPhoneNumber(e.target.value))} 
+                    placeholder="010-0000-0000" 
+                    maxLength={13}
+                    className={inputStyle} 
+                  />
                 </div>
                 <div>
                   <label className={labelStyle}>주소</label>
@@ -312,11 +360,11 @@ export default function Clients() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelStyle}>단가 / 월정액</label>
-                    <input value={expectedAmount} onChange={(e) => handleAmountChange(e.target.value)} placeholder="0" className={`${inputStyle} text-right`} />
+                    <input value={expectedAmount} onChange={(e) => handleAmountChange(e.target.value)} placeholder="0" className={`${inputStyle} text-right`} maxLength={11} />
                   </div>
                   <div>
                     <label className={labelStyle}>배송비</label>
-                    <input value={deliveryFee} onChange={(e) => handleDeliveryFeeChange(e.target.value)} placeholder="0" className={`${inputStyle} text-right`} />
+                    <input value={deliveryFee} onChange={(e) => handleDeliveryFeeChange(e.target.value)} placeholder="0" className={`${inputStyle} text-right`} maxLength={11}/>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">

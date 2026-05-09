@@ -9,4 +9,6 @@ import java.util.Optional;
 
 public interface AdminUserRepository extends JpaRepository<AdminUser, Long> {
     Optional<AdminUser> findByUserId(String userId);
+
+    Optional<AdminUser> findTopByCompanyCodeStartingWithOrderByCompanyCodeDesc(String prefix);
 }
