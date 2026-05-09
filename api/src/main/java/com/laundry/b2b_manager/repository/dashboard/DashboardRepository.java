@@ -19,7 +19,7 @@ public interface DashboardRepository extends JpaRepository<ClientCompany, Long> 
             COALESCE(CAST(SUM(
                 (CASE
                     WHEN c.store_type = 'MONTH' THEN c.expected_amount
-                    ELSE dw.total_qty * c.delivery_fee
+                    ELSE dw.total_qty * c.expected_amount
                 END) 
                 * (CASE WHEN c.vat_yn = 'Y' THEN 1.1 ELSE 1.0 END)
             ) AS SIGNED), 0) AS amount
@@ -48,7 +48,7 @@ public interface DashboardRepository extends JpaRepository<ClientCompany, Long> 
         SELECT COALESCE(CAST(SUM(
             (CASE
                 WHEN c.store_type = 'MONTH' THEN c.expected_amount
-                ELSE dw.total_qty * c.delivery_fee
+                ELSE dw.total_qty * c.expected_amount
             END) 
             * (CASE WHEN c.vat_yn = 'Y' THEN 1.1 ELSE 1.0 END)
         ) AS SIGNED), 0)

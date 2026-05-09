@@ -4,8 +4,8 @@ import {
   BarChart, Bar, Cell
 } from 'recharts';
 import { Link } from 'react-router-dom';
-// 🚀 1. 방금 만든 apiFetch 함수를 임포트합니다. (경로는 실제 파일 위치에 맞게 조정하세요)
 import { apiFetch } from '../../utils/api'; 
+import dayjs from "dayjs";
 
 /* ============================
       헬퍼 함수 & 커스텀 컴포넌트
@@ -18,7 +18,6 @@ const getBadgeColor = (diff) => {
   return "text-slate-600 bg-slate-50 border-slate-100";
 };
 
-// Y축 라벨이 길 경우 처리
 const CustomYAxisTick = ({ x, y, payload }) => (
   <text x={x} y={y} dy={4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="500">
     {payload.value && payload.value.length > 6 ? payload.value.slice(0, 6) + "…" : payload.value}
@@ -39,31 +38,25 @@ const Dashboard = () => {
       const companyCode = localStorage.getItem("companyCode");
       
       try {
-        // 🚀 2. 기본 fetch 대신 헤더에 토큰을 실어주는 apiFetch를 사용합니다!
         const [s, m, p] = await Promise.all([
           apiFetch(`/api/dashboard/summary?companyCode=${companyCode}`).then(r => r.json()),
           apiFetch(`/api/dashboard/monthly-sales?companyCode=${companyCode}`).then(r => r.json()),
           apiFetch(`/api/dashboard/partners?companyCode=${companyCode}`).then(r => r.json())
         ]);
 
-        // 1. Summary 세팅
         setSummary(s); 
 
         // 2. 월별 매출 배열 추출 (기존 로직)
         const rawMonthlyData = m?.monthlySales || m;
         const validMonthlyData = Array.isArray(rawMonthlyData) ? rawMonthlyData : [];
 
-        // 💡 최근 12개월의 '빈 틀'을 만들고, DB에 없는 달은 0으로 채움
         const filledMonthlyData = [];
-        // 기준 시점 설정 (실제 운영 시에는 new Date()를 사용, 현재는 DB 테스트 데이터인 2026년 6월 1일 기준)
-        const today = new Date("2026-06-01"); 
+        const today = new Date(dayjs().format("YYYY-MM-DD")); 
         today.setMonth(today.getMonth() - 1); // 지난달을 마지막으로 설정
         
         for (let i = 11; i >= 0; i--) {
             const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
             const monthStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
-            
-            // 가져온 데이터 중 해당 달(monthStr)이 있는지 검색
             const existingData = validMonthlyData.find(item => item.month === monthStr);
             
             filledMonthlyData.push({

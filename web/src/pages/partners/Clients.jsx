@@ -304,7 +304,7 @@ export default function Clients() {
                   <div>
                     <label className={labelStyle}>매장 구분</label>
                     <select value={storeType} onChange={(e) => setStoreType(e.target.value)} className={inputStyle}>
-                      <option value="BAG">건별(마대</option>
+                      <option value="BAG">건별(마대)</option>
                       <option value="MONTH">월별</option>
                     </select>
                   </div>
@@ -359,7 +359,7 @@ export default function Clients() {
                 <h3 className="text-sm font-bold text-slate-800">정산 정보</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelStyle}>단가 / 월정액</label>
+                    <label className={labelStyle}>건별 / 월정액</label>
                     <input value={expectedAmount} onChange={(e) => handleAmountChange(e.target.value)} placeholder="0" className={`${inputStyle} text-right`} maxLength={11} />
                   </div>
                   <div>
