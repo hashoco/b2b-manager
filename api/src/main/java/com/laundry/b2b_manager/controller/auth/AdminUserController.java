@@ -1,6 +1,7 @@
 package com.laundry.b2b_manager.controller.auth;
 
 import com.laundry.b2b_manager.entity.auth.AdminUser;
+import com.laundry.b2b_manager.repository.auth.SubscriptionRepository;
 import com.laundry.b2b_manager.service.auth.AdminUserService;
 import com.laundry.b2b_manager.util.JwtUtil;
 
@@ -9,7 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
+import com.laundry.b2b_manager.repository.auth.SubscriptionRepository;
+import com.laundry.b2b_manager.entity.auth.Subscription;
+import java.util.Optional;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,7 +23,7 @@ public class AdminUserController {
 
     private final AdminUserService adminUserService;
     private final JwtUtil jwtUtil; // 🚀 JwtUtil 의존성 주입
-
+    private final SubscriptionRepository subscriptionRepository;
     // ==========================================
     // 1. 로그인 API
     // ==========================================
@@ -50,6 +53,16 @@ public class AdminUserController {
             response.put("role", user.getRole());
             response.put("isFirstLogin", user.getIsFirstLogin());
 
+            //구독 상태 만료일 검사
+            Optional<Subscription> subOpt = subscriptionRepository.findByCompanyCode(user.getCompanyCode());
+            if (subOpt.isPresent()) {
+                response.put("subscriptionStatus", subOpt.get().getStatus().name()); 
+                response.put("subscriptionEndDate", subOpt.get().getEndDate().toString());
+            } else {
+                response.put("subscriptionStatus", "EXPIRED");
+                response.put("subscriptionEndDate", null);
+            }
+            
             return ResponseEntity.ok(response);
         } else {
             response.put("success", false);

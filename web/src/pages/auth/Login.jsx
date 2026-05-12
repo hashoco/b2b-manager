@@ -37,12 +37,22 @@ const Login = () => {
           localStorage.removeItem("savedUserId");
         }
 
+        // 기존 데이터 저장
         localStorage.setItem("token", data.token);
         localStorage.setItem("companyCode", data.companyCode);
         localStorage.setItem("userId", data.userId);      
         localStorage.setItem("username", data.username);  
         localStorage.setItem("role", data.role);          
         
+        // 🚀 [신규 추가] 구독 정보 저장
+        if (data.subscriptionStatus) {
+            localStorage.setItem("subscriptionStatus", data.subscriptionStatus);
+        }
+        if (data.subscriptionEndDate) {
+            localStorage.setItem("subscriptionEndDate", data.subscriptionEndDate);
+        }
+
+        // 초기 비밀번호 변경 로직 (기존 유지)
         if (data.isFirstLogin === 'Y' || data.isFirstLogin === true) {
           alert('안전한 서비스 이용을 위해 초기 비밀번호를 변경해 주세요.');
           navigate('/change-password-init'); 
