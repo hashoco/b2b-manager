@@ -15,6 +15,8 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import CompanyProfile from './pages/settings/CompanyProfile';
 import Checkout from './pages/payment/Checkout'; // Checkout 컴포넌트 임포트 확인
 import SubscriptionGuard from './pages/auth/SubscriptionGuard';
+import Success from './pages/payment/Success';
+import Fail from './pages/payment/Fail';
 
 const MainLayout = () => {
   return (
@@ -40,8 +42,9 @@ function App() {
         <Route path="/signup" element={<SignUp />} /> 
         <Route path="/change-password-init" element={<ChangePasswordInit />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        
-        {/* 결제 화면도 사이드바 없이 띄우는 것이 일반적입니다 */}
+        <Route path="/payment/success" element={<Success />} /> 
+        <Route path="/payment/fail" element={<Fail />} />
+
         <Route path="/payment/checkout" element={<Checkout />} /> 
 
         {/* 🚀 2. 인증 및 구독 확인이 필요한 페이지들 (Guard + MainLayout) */}
