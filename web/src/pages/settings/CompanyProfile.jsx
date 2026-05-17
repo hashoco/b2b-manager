@@ -78,24 +78,24 @@ const CompanyProfile = () => {
 
   return (
     <div className="p-8 bg-slate-50 min-h-screen font-sans text-slate-800">
-      <div className="max-w-4xl mx-auto space-y-4"> {/* 섹션 간 간격 축소 (space-y-8 -> 4) */}
+      {/* 🚀 1. max-w-4xl을 max-w-5xl로 변경하여 전체 박스의 가로 공간을 넓혔습니다. */}
+      <div className="max-w-5xl mx-auto space-y-4">
         
         <h1 className="text-xl font-bold text-slate-800 ml-1">설정 및 구독 관리</h1>
 
         {/* =========================================
-            [섹션 1] 사업자 정보 (간격 대폭 축소)
+            [섹션 1] 사업자 정보
         ========================================= */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          {/* 헤더 높이 축소 (p-6 -> py-3 px-5) */}
           <div className="py-3 px-5 border-b border-slate-200 bg-slate-50">
             <h2 className="text-sm font-bold text-slate-800">사업자 정보</h2>
           </div>
 
-          {/* 폼 내부 여백 및 요소 간 간격 축소 (p-8 -> p-5, space-y-6 -> 4) */}
-          <form onSubmit={handleSave} className="p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3"> {/* 가로 간격 유지, 세로 간격 축소 */}
-              <div className="col-span-2 md:col-span-1">
-                <label className="block text-[11px] font-bold text-slate-500 mb-1">사업자 등록번호</label>
+          <form onSubmit={handleSave} className="p-6 sm:p-8 space-y-6">
+            {/* 🚀 2. gap-x-24를 적용하여 왼쪽과 오른쪽 칸 사이를 엄청나게 넓게 띄웠습니다. */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-24 gap-y-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">사업자 등록번호</label>
                 <input
                   type="text"
                   value={formData.bizRegNo}
@@ -104,8 +104,8 @@ const CompanyProfile = () => {
                 />
               </div>
               
-              <div className="col-span-2 md:col-span-1">
-                <label className="block text-[11px] font-bold text-slate-500 mb-1">공급자 상호(법인명)</label>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">공급자 상호(법인명)</label>
                 <input
                   type="text"
                   value={formData.companyName}
@@ -114,8 +114,8 @@ const CompanyProfile = () => {
                 />
               </div>
               
-              <div className="col-span-2 md:col-span-1">
-                <label className="block text-[11px] font-bold text-slate-500 mb-1">대표자 성명</label>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">대표자 성명</label>
                 <input
                   type="text"
                   value={formData.ownerName}
@@ -124,8 +124,8 @@ const CompanyProfile = () => {
                 />
               </div>
               
-              <div className="col-span-2 md:col-span-1">
-                <label className="block text-[11px] font-bold text-slate-500 mb-1">대표 이메일 (계산서 발송용)</label>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">대표 이메일 (계산서 발송용)</label>
                 <input
                   type="email"
                   value={formData.email}
@@ -135,12 +135,11 @@ const CompanyProfile = () => {
               </div>
             </div>
 
-            {/* 버튼 상단 여백 축소 (pt-4 -> pt-1) */}
-            <div className="pt-1">
+            <div className="pt-2">
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm disabled:bg-slate-400"
+                className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm disabled:bg-slate-400"
               >
                 {loading ? "저장 중..." : "사업자 정보 저장하기"}
               </button>
@@ -149,7 +148,7 @@ const CompanyProfile = () => {
         </div>
 
         {/* =========================================
-            [섹션 2] 구독 및 결제 내역 (통합 섹션)
+            [섹션 2] 구독 및 결제 내역
         ========================================= */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="py-3 px-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
@@ -165,7 +164,6 @@ const CompanyProfile = () => {
             <div className="p-6 text-center text-slate-400 text-xs animate-pulse">데이터 로드 중...</div>
           ) : (
             <>
-              {/* 구독 현황 (간격 최적화) */}
               <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                   <h3 className="text-[11px] font-bold text-slate-400 mb-1">이용 플랜</h3>
@@ -191,7 +189,6 @@ const CompanyProfile = () => {
                 </button>
               </div>
 
-              {/* 결제 내역 테이블 */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs whitespace-nowrap">
                   <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
